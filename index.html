@@ -1,0 +1,289 @@
+<title>2D Fast Fourier Transform Demo</title>
+<meta charset="UTF-8">
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<meta name='description' content='2D Fast Fourier Transform(2DFFT) demo using WebGL2.0.'>
+<!-- <script src='https://cdn.jsdelivr.net/npm/vue/dist/vue.js'></script> -->
+<script src='vue.min.js'></script>
+<!-- <script src='three.min.js'></script> -->
+<script src='three.js'></script>
+
+<div class='app'>
+    <h1>2D Fast Fourier Transform Demo</h1>
+    <h2>Forward</h2>
+    <h3>Original Image</h3>
+    image URL: 
+    <input v-model='imageURL'> 
+    <button v-on:click='loadImage'>Update</button><br>
+    <canvas id='cv0'></canvas>
+    <canvas id='cv1'></canvas>
+    <h2>Backward</h2>
+    <canvas id='cv2'></canvas>
+    <canvas id='cv3'></canvas>
+</div>
+
+
+
+<script type="x-shader/x-vertex" id="vs" >
+    #version 300 es
+    void main() {
+        gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+    }
+</script>
+
+
+<script type='x-shader/x-fragment' id='fscv0'>
+    #version 300 es
+    precision highp float;
+    //precision highp int;
+    
+    uniform uint N;
+    uniform vec2 d;
+    uniform sampler2D ta;
+    
+    out vec4 fragColor;
+    
+    void main() {
+        vec2 p = gl_FragCoord.xy*d;
+        vec4 c = texture(ta, p);
+        float gray = (c.r + c.g + c.b)/3.0;
+        fragColor = vec4(gray);
+    }
+</script>
+
+
+<script type='x-shader/x-fragment' id='fscv1'>
+    #version 300 es
+    precision highp float;
+    //precision mediump int;
+    
+    uniform uint N;
+    uniform vec2 d;
+    uniform sampler2D ta;
+    
+    out vec4 fragColor;
+    
+    void main() {
+        //uvec2 pi = uvec2(gl_FragCoord.xy);
+        //pi = (pi + N)%N;
+        //vec2 pf = vec2(pi) + 0.5;
+        fragColor = texture(ta, pf*d);
+    }
+</script>
+
+
+<script type='x-shader/x-fragment' id='fscv2'>
+    #version 300 es
+    precision highp float;
+    //precision highp int;
+    
+    //uniform vec2 d;
+    //uniform sampler2D ta, tb;
+    
+    out vec4 fragColor;
+    
+    void main() {
+        fragColor = vec4(1, 0, 0, 0);
+    }
+</script>
+
+
+<script type='x-shader/x-fragment' id='fscv3'>
+    #version 300 es
+    precision highp float;
+    //precision highp int;
+    
+    //uniform vec2 d;
+    //uniform sampler2D ta, tb;
+    
+    out vec4 fragColor;
+    
+    void main() {
+        fragColor = vec4(1, 0, 0, 0);
+    }
+</script>
+
+
+<script type='x-shader/x-fragment' id='fs0'>
+    #version 300 es
+    precision highp float;
+    precision mediump int;
+    
+    uniform vec2 d;
+    uniform sampler2D ta, tb;
+    
+    out vec4 fragColor;
+    
+    void main() {
+        uvec2 p = gl_FragCoord.xy;
+        fragColor = vec4(1.);
+    }
+</script>
+
+
+<script type='x-shader/x-fragment' id='fs1'>
+    #version 300 es
+    precision highp float;
+    //precision highp int;
+    
+    //uniform vec2 d;
+    //uniform sampler2D ta, tb;
+    
+    out vec4 fragColor;
+    
+    void main() {
+        fragColor = vec4(1, 0, 0, 0);
+    }
+</script>
+
+
+<script type='x-shader/x-fragment' id='fs2'>
+    #version 300 es
+    precision highp float;
+    //precision highp int;
+    
+    //uniform vec2 d;
+    //uniform sampler2D ta, tb;
+    
+    out vec4 fragColor;
+    
+    void main() {
+        fragColor = vec4(1, 0, 0, 0);
+    }
+</script>
+
+
+<script type='x-shader/x-fragment' id='fs3'>
+    #version 300 es
+    precision highp float;
+    //precision highp int;
+    
+    //uniform vec2 d;
+    //uniform sampler2D ta, tb;
+    
+    out vec4 fragColor;
+    
+    void main() {
+        fragColor = vec4(1, 0, 0, 0);
+    }
+</script>
+
+
+<script lang="javascript">
+    'use strict';
+
+    // let N = 256;        // image size (width and height)
+    let N = 512;        // image size (width and height)
+
+    let renderer;       // WebGLRenderer
+    let ctx      = [];  // canvas contexts
+    let mfscv    = [];  // ShaderMaterial for canvas
+    let mfs      = [];  // ShaderMaterial for texture
+    let tex      = [];  // textures
+    let uniform  = [];
+
+
+    // renderer
+    let canvas = document.createElement('canvas');
+    let context = canvas.getContext('webgl2', {alpha: false});
+    renderer = new THREE.WebGLRenderer({canvas: canvas, context: context});
+    renderer.setSize(N, N);
+
+    // textures
+    tex.push(new THREE.WebGLRenderTarget(N, N));
+    tex.push([
+        new THREE.WebGLRenderTarget(N, N, {type: THREE.FloatType}),
+        new THREE.WebGLRenderTarget(N, N, {type: THREE.FloatType}),
+    ]);
+
+    // prepare shader materials
+    for(let i=0;i<4;i++){
+        uniform.push({
+            N:          {type: 'ui',  value: N},
+            d:          {type: 'v2', value: new THREE.Vector2(1.0/N, 1.0/N)},
+            ta:         {type: 't',  value: undefined},
+            tb:         {type: 't',  value: undefined},
+        });
+        mfscv.push(
+            new THREE.ShaderMaterial({
+                vertexShader: document.getElementById('vs').textContent.trim(),
+                fragmentShader: document.getElementById('fscv'+i).textContent.trim(),
+                uniforms: uniform[i],
+            })
+        );
+        mfs.push(
+            new THREE.ShaderMaterial({
+                vertexShader: document.getElementById('vs').textContent.trim(),
+                fragmentShader: document.getElementById('fs'+i).textContent.trim(),
+                uniforms: uniform[i],
+            })
+        );
+    }
+
+
+    let scene    = new THREE.Scene();
+    let camera   = new THREE.OrthographicCamera(-0.5, 0.5, 0.5, -0.5, -1, 1);
+
+    camera.position.z = 1;
+    scene.add(camera)
+
+    let plane = new THREE.PlaneGeometry(1.0, 1.0);
+    let mesh  = new THREE.Mesh(plane);
+    scene.add(mesh);
+
+    var app = new Vue({
+        el: '.app',
+        data: {
+            imageURL: 'image/lena.png',
+        }, 
+        mounted: function () {
+            // prepare renderer
+            for(let i=0;i<4;i++){
+                let cv = document.getElementById('cv'+i);
+                cv.width  = N;
+                cv.height = N;
+                // cv.style.width  = 512;
+                // cv.style.height = 512;
+                cv.style.width  = N;
+                cv.style.height = N;
+                ctx.push(cv.getContext('2d'));
+            }
+
+            this.loadImage();
+        },
+        methods: {
+            loadImage: function() {
+                var loader = new THREE.TextureLoader();
+                loader.load(
+                    this.imageURL,
+                    // onLoad callback
+                    this.init,
+                    // onProgress callback currently not supported
+                    undefined,
+                    // onError callback
+                    function() {
+                        console.error('Load Error');
+                    }
+                );
+            },
+            init: function(texture) {
+                tex[0].texture = texture;
+
+                // phase 0
+                mesh.material = mfscv[0];
+                uniform[0].ta.value = tex[0].texture;
+                renderer.setRenderTarget(null);
+                renderer.render(scene, camera)
+                ctx[0].drawImage(renderer.domElement, 0, 0);
+                renderer.setRenderTarget(tex[1][0]);
+                renderer.render(scene, camera)
+
+                // phase 1
+                mesh.material = mfscv[1];
+                uniform[1].ta.value = tex[1][0].texture;
+
+                renderer.setRenderTarget(null);
+                ctx[1].drawImage(renderer.domElement, 0, 0);
+            },
+        },
+    });
+</script>
