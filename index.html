@@ -36,7 +36,6 @@
     precision highp float;
     //precision highp int;
     
-    uniform uint N;
     uniform vec2 d;
     uniform sampler2D ta;
     
@@ -56,17 +55,19 @@
     precision highp float;
     //precision mediump int;
     
-    uniform uint N;
+    uniform int N;
     uniform vec2 d;
     uniform sampler2D ta;
     
     out vec4 fragColor;
     
     void main() {
-        //uvec2 pi = uvec2(gl_FragCoord.xy);
-        //pi = (pi + N)%N;
-        //vec2 pf = vec2(pi) + 0.5;
+        uint n = uint(N);
+        uvec2 pi = uvec2(gl_FragCoord.xy);
+        pi = (pi + (n >> 1))%n;
+        vec2 pf = vec2(pi) + 0.5;
         fragColor = texture(ta, pf*d);
+        //fragColor = texture(ta, pf*d);
     }
 </script>
 
@@ -198,7 +199,7 @@
     // prepare shader materials
     for(let i=0;i<4;i++){
         uniform.push({
-            N:          {type: 'ui',  value: N},
+            N:          {type: 'ui', value: N},
             d:          {type: 'v2', value: new THREE.Vector2(1.0/N, 1.0/N)},
             ta:         {type: 't',  value: undefined},
             tb:         {type: 't',  value: undefined},
@@ -282,6 +283,7 @@
                 uniform[1].ta.value = tex[1][0].texture;
 
                 renderer.setRenderTarget(null);
+                renderer.render(scene, camera)
                 ctx[1].drawImage(renderer.domElement, 0, 0);
             },
         },
