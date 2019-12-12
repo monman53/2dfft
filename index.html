@@ -22,7 +22,6 @@
 </div>
 
 
-
 <script type="x-shader/x-vertex" id="vs" >
     #version 300 es
     void main() {
@@ -41,10 +40,8 @@
     out vec4 fragColor;
     
     void main() {
-        vec2 p = gl_FragCoord.xy*d;
-        vec4 c = texture(ta, p);
-        float gray = (c.r + c.g + c.b)/3.0;
-        fragColor = vec4(gray);
+        vec4 c = texture(ta, gl_FragCoord.xy*d);
+        fragColor = vec4((c.r + c.g + c.b)/3.0);
     }
 </script>
 <!-- }}} -->
@@ -125,10 +122,9 @@
     
     out vec4 fragColor;
 
-    uint reverse(uint n) {
-        uint max_n = uint(N);
-        uint res = 0u;
-        for(uint i=1u;i<max_n;i<<=1u){
+    uvec2 reverse(uvec2 n) {
+        uvec2 res = uvec2(0u);
+        for(uint i=1u;i<uint(N);i<<=1u){
             res <<= 1u;
             res |= n & 1u;
             n >>= 1u;
@@ -138,8 +134,7 @@
     
     void main() {
         uvec2 pi = uvec2(gl_FragCoord.xy);
-        pi.x = reverse(pi.x);
-        pi.y = reverse(pi.y);
+        pi = reverse(pi);
         vec2 pf = (vec2(pi) + 0.5)*d;
         vec4 c = texture(ta, pf);
         float gray = (c.r + c.g + c.b)/3.0;
@@ -174,21 +169,21 @@
         uint n = uint(N);
         uint m = uint(itr);
         uvec2 pi = uvec2(gl_FragCoord.xy);
-        uvec2 pio = pi/m*m;
-        uvec2 pim = pi%(m/2u);
-
-        vec2 v0 = texture(ta, (vec2(pio+uvec2(0u,   0u  )+pim)+0.5)*d).xy;
-        vec2 v1 = texture(ta, (vec2(pio+uvec2(m/2u, 0u  )+pim)+0.5)*d).xy;
-        vec2 v2 = texture(ta, (vec2(pio+uvec2(0u,   m/2u)+pim)+0.5)*d).xy;
-        vec2 v3 = texture(ta, (vec2(pio+uvec2(m/2u, m/2u)+pim)+0.5)*d).xy;
-
-        v0 = mul(v0, expi((0u       )%m));
-        v1 = mul(v1, expi((pi.x     )%m));
-        v2 = mul(v2, expi((pi.y     )%m));
-        v3 = mul(v3, expi((pi.x+pi.y)%m));
+        uvec2 pim = pi&((m>>1)-1u);
+        uvec2 pio = pi&~(m-1u)+pim;
+    
+        vec2 v0 = texture(ta, (vec2(pio+uvec2(0u,   0u  ))+0.5)*d).xy;
+        vec2 v1 = texture(ta, (vec2(pio+uvec2(m>>1, 0u  ))+0.5)*d).xy;
+        vec2 v2 = texture(ta, (vec2(pio+uvec2(0u,   m>>1))+0.5)*d).xy;
+        vec2 v3 = texture(ta, (vec2(pio+uvec2(m>>1, m>>1))+0.5)*d).xy;
+    
+        //v0 = mul(v0, expi((0u       )%m));
+        v1 = mul(v1, expi((pi.x     )&(m-1u)));
+        v2 = mul(v2, expi((pi.y     )&(m-1u)));
+        v3 = mul(v3, expi((pi.x+pi.y)&(m-1u)));
 
         vec2 res = v0+v1+v2+v3;
-        fragColor = vec4(res.x, res.y, 0.0, 0.0);
+        fragColor = vec4(res, 0.0, 0.0);
     }
 </script>
 <!-- }}} -->
@@ -206,10 +201,9 @@
     
     out vec4 fragColor;
 
-    uint reverse(uint n) {
-        uint max_n = uint(N);
-        uint res = 0u;
-        for(uint i=1u;i<max_n;i<<=1u){
+    uvec2 reverse(uvec2 n) {
+        uvec2 res = uvec2(0u);
+        for(uint i=1u;i<uint(N);i<<=1u){
             res <<= 1u;
             res |= n & 1u;
             n >>= 1u;
@@ -219,8 +213,7 @@
     
     void main() {
         uvec2 pi = uvec2(gl_FragCoord.xy);
-        pi.x = reverse(pi.x);
-        pi.y = reverse(pi.y);
+        pi = reverse(pi);
         vec2 pf = (vec2(pi) + 0.5)*d;
         fragColor = texture(ta, pf)/float(N);
     }
@@ -253,21 +246,21 @@
         uint n = uint(N);
         uint m = uint(itr);
         uvec2 pi = uvec2(gl_FragCoord.xy);
-        uvec2 pio = pi/m*m;
-        uvec2 pim = pi%(m/2u);
+        uvec2 pim = pi&((m>>1)-1u);
+        uvec2 pio = pi&~(m-1u)+pim;
     
-        vec2 v0 = texture(ta, (vec2(pio+uvec2(0u,   0u  )+pim)+0.5)*d).xy;
-        vec2 v1 = texture(ta, (vec2(pio+uvec2(m/2u, 0u  )+pim)+0.5)*d).xy;
-        vec2 v2 = texture(ta, (vec2(pio+uvec2(0u,   m/2u)+pim)+0.5)*d).xy;
-        vec2 v3 = texture(ta, (vec2(pio+uvec2(m/2u, m/2u)+pim)+0.5)*d).xy;
+        vec2 v0 = texture(ta, (vec2(pio+uvec2(0u,   0u  ))+0.5)*d).xy;
+        vec2 v1 = texture(ta, (vec2(pio+uvec2(m>>1, 0u  ))+0.5)*d).xy;
+        vec2 v2 = texture(ta, (vec2(pio+uvec2(0u,   m>>1))+0.5)*d).xy;
+        vec2 v3 = texture(ta, (vec2(pio+uvec2(m>>1, m>>1))+0.5)*d).xy;
     
-        v0 = mul(v0, expi((0u       )%m));
-        v1 = mul(v1, expi((pi.x     )%m));
-        v2 = mul(v2, expi((pi.y     )%m));
-        v3 = mul(v3, expi((pi.x+pi.y)%m));
+        //v0 = mul(v0, expi((0u       )%m));
+        v1 = mul(v1, expi((pi.x     )&(m-1u)));
+        v2 = mul(v2, expi((pi.y     )&(m-1u)));
+        v3 = mul(v3, expi((pi.x+pi.y)&(m-1u)));
     
         vec2 res = v0+v1+v2+v3;
-        fragColor = vec4(res.x, res.y, 0.0, 0.0);
+        fragColor = vec4(res, 0.0, 0.0);
 }
 </script>
 <!-- }}} -->
