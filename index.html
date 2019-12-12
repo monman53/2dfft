@@ -30,13 +30,14 @@ canvas {
     <canvas id='cv0'></canvas>
     <canvas id='cv1'></canvas>
     <h2>Backward</h2>
-    <input type='range' min='0' max='0.1' step='0.001' v-model:number='mouse.r'></input>
+    <input type='range' min='0' max='0.1' step='0.001' v-model:number='uniforms.b_r.value'></input>
     <div>
         <canvas id='cv2'
             @mousemove='mouseMove'
             @mousedown='mouseDown'
             @mouseup='mouseUp'
             style='cursor: crosshair;'
+            oncontextmenu="return false"
             ></canvas>
         <canvas id='cv3'></canvas>
     </div>
@@ -139,8 +140,8 @@ canvas {
     precision mediump int;
     
     uniform int N;
-    uniform vec2 d, mouse;
-    uniform int mouseDown;
+    uniform vec2 d, b_xy;
+    uniform int b_active, b_type;
     uniform float b_r;
     
     uniform sampler2D ta;
@@ -149,9 +150,11 @@ canvas {
     
     void main() {
         fragColor = texture(ta, gl_FragCoord.xy*d);
-        if(mouseDown != 0){
-            if(distance(gl_FragCoord.xy*d, mouse) < b_r){
-                fragColor = vec4(1.0);
+        if(b_active > 0){
+            if(b_type == 1){
+                if(distance(gl_FragCoord.xy*d, b_xy) < b_r){
+                    fragColor = vec4(1.0);
+                }
             }
         }
     }
@@ -379,14 +382,15 @@ canvas {
         })
     }
     let uniforms = {
-        N:    {type: 'i',  value: N},
-        itr:  {type: 'i',  value: 1},
-        d:    {type: 'v2', value: new THREE.Vector2(1.0/N, 1.0/N)},
-        mouse:{type: 'v2', value: new THREE.Vector2(0.0, 0.0)},
-        mouseDown:{type: 'i', value: 0},
-        ta:   {type: 't',  value: undefined},
-        tb:   {type: 't',  value: undefined},
-        b_r:  {type: 'f',  value: 0.05},
+        N:          {type: 'i',  value: N},
+        itr:        {type: 'i',  value: 1},
+        d:          {type: 'v2', value: new THREE.Vector2(1.0/N, 1.0/N)},
+        ta:         {type: 't',  value: undefined},
+        tb:         {type: 't',  value: undefined},
+        b_active:   {type: 'i',  value: 0},
+        b_xy:       {type: 'v2', value: new THREE.Vector2(0.0, 0.0)},
+        b_type:     {type: 'i',  value: 1},
+        b_r:        {type: 'f',  value: 0.005},
     };
     for(let i=0;i<4;i++){
         mfscv.push(createShaderMaterial('fscv'+i, uniforms));
@@ -411,12 +415,6 @@ canvas {
             imageURL: 'image/lena.png',
             uniforms: uniforms,
             styleN: 512,
-            mouse: {
-                x: 0,
-                y: 0,
-                on: false,
-                r: 0.005,
-            },
         }, 
         mounted: function () {
             // prepare renderer
@@ -447,34 +445,24 @@ canvas {
                 );
             },
             mouseDown: function() {
-                this.mouse.on = true;
+                this.uniforms.b_active.value = 1;
             },
             mouseUp: function() {
-                this.mouse.on = false;
+                this.uniforms.b_active.value = 0;
             },
             mouseMove: function(e) {
-                this.mouse.x = e.offsetX/this.styleN;
-                this.mouse.y = 1.0-e.offsetY/this.styleN;
+                this.uniforms.b_xy.value.x = e.offsetX/this.styleN;
+                this.uniforms.b_xy.value.y = 1.0-e.offsetY/this.styleN;
             },
             animation: function() {
                 // drawings
                 mesh.material = mfsd;
-
-                uniforms.mouse.value.x = this.mouse.x;
-                uniforms.mouse.value.y = this.mouse.y;
-                uniforms.mouseDown.value = this.mouse.on;
+                // TODO
                 uniforms.ta.value = texd[0].texture;
-                uniforms.b_r.value = this.mouse.r;
-
                 renderer.setRenderTarget(texd[1]);
                 renderer.render(scene, camera)
 
                 uniforms.ta.value = texd[1].texture;
-                uniforms.mouse.value.x = this.mouse.x;
-                uniforms.mouse.value.y = this.mouse.y;
-                uniforms.mouseDown.value = this.mouse.on;
-                uniforms.b_r.value = this.mouse.r;
-
                 renderer.setRenderTarget(texd[0]);
                 renderer.render(scene, camera)
 
