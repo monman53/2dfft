@@ -99,6 +99,8 @@ var app = new Vue({
             ctx.push(cv.getContext('2d'));
         }
 
+        this.uniforms.b_type.value = 3; // clear mask
+
         this.loadImage();
         this.animation();
     },
@@ -121,18 +123,17 @@ var app = new Vue({
             this.uniforms.b_active.value = 1;
             switch(e.button) {
                 case 0:
-                    this.uniforms.b_v.value = 0.0;
+                    this.uniforms.b_type.value = 1;
                     break;
                 case 2:
-                    this.uniforms.b_v.value = 1.0;
+                    this.uniforms.b_type.value = 2;
                     break;
                 default:
-                    this.uniforms.b_v.value = 0.0;
+                    this.uniforms.b_type.value = 1;
             }
         },
         mouseUp: function() {
             this.uniforms.b_active.value = 0;
-            this.uniforms.b_v.value = 0.0;
         },
         mouseMove: function(e) {
             this.uniforms.b_xy.value.x = e.offsetX/this.styleN;
@@ -149,10 +150,17 @@ var app = new Vue({
 
             // drawings
             mesh.material = mfsd;
+            let flag = false;
+            if(this.uniforms.b_type.value == 3){
+                flag = true;
+            }
             uniforms.ta.value = texd[this.ping].texture;
             renderer.setRenderTarget(texd[1-this.ping]);
             renderer.render(scene, camera)
             this.ping = 1-this.ping;
+            if(flag){
+                this.uniforms.b_type.value = 1;
+            }
 
 
             // phase 2

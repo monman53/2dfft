@@ -29,6 +29,7 @@ canvas {
     <button v-on:click='loadImage'>Update</button><br>
     <input type='range' min='0.0' max='0.2' step='0.001' v-model:number='uniforms.b_r.value'></input>size: {{uniforms.b_r.value}}<br>
     <input type='range' min='0.0' max='1.0' step='0.01' v-model:number='uniforms.b_v.value'></input>mask value: {{uniforms.b_v.value}}<br>
+    <button @click='uniforms.b_type.value=3'>Clear</button><br>
     <canvas id='cv0' style='display: none;'></canvas>
     <canvas id='cv2'
         @mousemove='mouseMove'
@@ -45,6 +46,9 @@ canvas {
         oncontextmenu='return false'
         ></canvas>
     <canvas id='cv3'></canvas>
+    <br>
+    uniforms.b_active: {{uniforms.b_active}}<br>
+    uniforms.b_type: {{uniforms.b_type}}<br>
 </div>
 
 
@@ -160,9 +164,12 @@ canvas {
             if(dist < b_r){
                 switch(b_type){
                     case 1: fragColor.x = b_v; break;
-    //                case 2: fragColor.x = 0.0; break;
+                    case 2: fragColor.x = 1.0-b_v; break;
                 }
             }
+        }
+        switch(b_type){
+            case 3: fragColor.x = 1.0; break;
         }
 
         if(dist > b_r && dist < b_r+1.0*d.x){
