@@ -65,18 +65,60 @@
         uvec2 pi = uvec2(gl_FragCoord.xy);
         pi = (pi + (n >> 1))%n;
         vec2 pf = vec2(pi) + 0.5;
-        float F = length(texture(ta, pf*d).rg);
+        float F = log(length(texture(ta, pf*d).rg/sqrt(float(N))));
         //float F = length(texture(ta, pf*d).rg);
         fragColor = vec4(F);
+        //fragColor = texture(ta, gl_FragCoord.xy*d);
     }
 </script>
 
 
 <script type='x-shader/x-fragment' id='fscv2'>
+    #version 300 es
+    precision highp float;
+    precision mediump int;
+    
+    uniform int N;
+    uniform vec2 d;
+    uniform sampler2D ta, tb;
+    
+    out vec4 fragColor;
+    
+    void main() {
+        fragColor = vec4(texture(ta, gl_FragCoord.xy*d).r);
+    }
 </script>
 
 
 <script type='x-shader/x-fragment' id='fscv3'>
+    #version 300 es
+    precision highp float;
+    precision mediump int;
+    
+    uniform int N;
+    uniform vec2 d;
+    uniform sampler2D ta, tb;
+    
+    out vec4 fragColor;
+    
+    uint reverse(uint n) {
+        uint res = 0u;
+        for(uint i=1u;i<uint(N);i<<=1u){
+            res <<= 1u;
+            res |= n & 1u;
+            n >>= 1u;
+        }
+        return res;
+    }
+    
+    void main() {
+        uvec2 pi = uvec2(gl_FragCoord.xy);
+        pi.x = reverse(pi.x);
+        pi.y = reverse(pi.y);
+        vec2 pf = (vec2(pi)+0.5)*d;
+        vec4 c = texture(ta, pf);
+        fragColor = vec4(c.r, c.r, c.r, c.r);
+    }
 </script>
 
 
@@ -143,15 +185,30 @@
         uvec2 pio = pi/m*m;
         uvec2 pim = pi%(m/2u);
 
-        vec2 v0 = texture(ta, (vec2(pio+uvec2(0u,   0u  )+pim)+0.5)*d).rg;
-        vec2 v1 = texture(ta, (vec2(pio+uvec2(m/2u, 0u  )+pim)+0.5)*d).rg;
-        vec2 v2 = texture(ta, (vec2(pio+uvec2(0u,   m/2u)+pim)+0.5)*d).rg;
-        vec2 v3 = texture(ta, (vec2(pio+uvec2(m/2u, m/2u)+pim)+0.5)*d).rg;
+        vec2 v0 = texture(ta, (vec2(pio+uvec2(0u,   0u  )+pim)+0.5)*d).xy;
+        vec2 v1 = texture(ta, (vec2(pio+uvec2(m/2u, 0u  )+pim)+0.5)*d).xy;
+        vec2 v2 = texture(ta, (vec2(pio+uvec2(0u,   m/2u)+pim)+0.5)*d).xy;
+        vec2 v3 = texture(ta, (vec2(pio+uvec2(m/2u, m/2u)+pim)+0.5)*d).xy;
 
         v0 = mul(v0, expi((0u)%m));
         v1 = mul(v1, expi((pi.x)%m));
         v2 = mul(v2, expi((pi.y)%m));
         v3 = mul(v3, expi((pi.x+pi.y)%m));
+
+        //if(pi.y%m < m/2u){
+        //    if(pi.x%m < m/2u){
+        //        fragColor = vec4(v3.x, v3.y, 0.0, 0.0);
+        //    }else{
+        //        fragColor = vec4(v2.x, v2.y, 0.0, 0.0);
+        //    }
+        //}else{
+        //    if(pi.x%m < m/2u){
+        //        fragColor = vec4(v1.x, v1.y, 0.0, 0.0);
+        //    }else{
+        //        fragColor = vec4(v0.x, v0.x, 0.0, 0.0);
+        //    }
+        //}
+        //fragColor = texture(ta, gl_FragCoord.xy*d);
 
         //if(pim.y < m/2u){
         //    if(pim.x < m/2u){
@@ -162,15 +219,15 @@
         //    }else{
         //        v0 = mul(v0, expi((0u)%m));
         //        v1 = mul(v1, expi((pi.x)%m));
-        //        v2 = mul(v2, expi((pi.y+pi.x)%m));
-        //        v3 = mul(v3, expi((pi.y)%m));
+        //        v2 = mul(v2, expi((pi.y)%m));
+        //        v3 = mul(v3, expi((pi.x)%m));
         //    }
         //}else{
         //    if(pim.x < m/2u){
-        //        v0 = mul(v0, expi((0u)%m));
-        //        v1 = mul(v1, expi((pi.x)%m));
+        //        v0 = mul(v0, expi((pi.x)%m));
+        //        v1 = mul(v1, expi((0u)%m));
         //        v2 = mul(v2, expi((pi.y)%m));
-        //        v3 = mul(v3, expi((pi.x)%m));
+        //        v3 = mul(v3, expi((pi.x+pi.y)%m));
         //    }else{
         //        v0 = mul(v0, expi((pi.x+pi.y)%m));
         //        v1 = mul(v1, expi((0u)%m));
@@ -214,10 +271,15 @@
     renderer.setSize(N, N);
 
     // textures
-    tex.push(new THREE.WebGLRenderTarget(N, N));
+    var options = {
+        type: THREE.FloatType,
+        magFilter: THREE.NearestFilter,
+        minFilter: THREE.NearestFilter,
+    };
+    tex.push(new THREE.WebGLRenderTarget(N, N, options));
     tex.push([
-        new THREE.WebGLRenderTarget(N, N, {type: THREE.FloatType}),
-        new THREE.WebGLRenderTarget(N, N, {type: THREE.FloatType}),
+        new THREE.WebGLRenderTarget(N, N, options),
+        new THREE.WebGLRenderTarget(N, N, options),
     ]);
 
     // prepare shader materials
@@ -292,6 +354,8 @@
                 );
             },
             init: function(texture) {
+                texture.magFilter = THREE.NearestFilter;
+                texture.minFilter = THREE.NearestFilter;
                 tex[0].texture = texture;
 
                 // phase 0
@@ -314,7 +378,6 @@
                 let ping = 0;
                 // TODO rename itr
                 for(let itr=2;itr<=N;itr*=2){
-                //for(var itr=2;itr<4;itr*=2){
                     uniform[1].ta.value = tex[1][ping].texture;
                     uniform[1].itr.value = itr;
                     renderer.setRenderTarget(tex[1][1-ping]);
@@ -328,6 +391,19 @@
                 renderer.setRenderTarget(null);
                 renderer.render(scene, camera)
                 ctx[1].drawImage(renderer.domElement, 0, 0);
+
+
+                //mesh.material = mfscv[2];
+                //uniform[2].ta.value = tex[1][0].texture;
+                //renderer.setRenderTarget(null);
+                //renderer.render(scene, camera)
+                //ctx[2].drawImage(renderer.domElement, 0, 0);
+
+                //mesh.material = mfscv[3];
+                //uniform[3].ta.value = tex[1][0].texture;
+                //renderer.setRenderTarget(null);
+                //renderer.render(scene, camera)
+                //ctx[3].drawImage(renderer.domElement, 0, 0);
             },
         },
     });
