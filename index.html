@@ -1,7 +1,7 @@
-<title>2D Fast Fourier Transform Demo</title>
+<title>2D Fast Fourier Transform Live Demo</title>
 <meta charset="UTF-8">
 <meta name='viewport' content='width=device-width, initial-scale=1'>
-<meta name='description' content='2D Fast Fourier Transform(2DFFT) demo using WebGL2.0.'>
+<meta name='description' content='2D fast Fourier transform(2DFFT) live demo using WebGL2.0.'>
 <!-- <script src='https://cdn.jsdelivr.net/npm/vue/dist/vue.js'></script> -->
 <script src='vue.min.js'></script>
 <!-- <script src='three.min.js'></script> -->
@@ -30,7 +30,7 @@
     }
 </script>
 
-
+<!-- fscv0 {{{ -->
 <script type='x-shader/x-fragment' id='fscv0'>
     #version 300 es
     precision highp float;
@@ -47,8 +47,9 @@
         fragColor = vec4(gray);
     }
 </script>
+<!-- }}} -->
 
-
+<!-- fscv1 {{{ -->
 <script type='x-shader/x-fragment' id='fscv1'>
     #version 300 es
     precision highp float;
@@ -65,14 +66,13 @@
         uvec2 pi = uvec2(gl_FragCoord.xy);
         pi = (pi + (n >> 1))%n;
         vec2 pf = vec2(pi) + 0.5;
-        float F = log(length(texture(ta, pf*d).rg/sqrt(float(N))));
-        //float F = length(texture(ta, pf*d).rg);
+        float F = log(length(texture(ta, pf*d).rg*float(N)))/8.0; // TODO 8 is magick number
         fragColor = vec4(F);
-        //fragColor = texture(ta, gl_FragCoord.xy*d);
     }
 </script>
+<!-- }}} -->
 
-
+<!-- fscv2 {{{ -->
 <script type='x-shader/x-fragment' id='fscv2'>
     #version 300 es
     precision highp float;
@@ -80,16 +80,22 @@
     
     uniform int N;
     uniform vec2 d;
-    uniform sampler2D ta, tb;
+    uniform sampler2D ta;
     
     out vec4 fragColor;
     
     void main() {
-        fragColor = vec4(texture(ta, gl_FragCoord.xy*d).r);
+        uint n = uint(N);
+        uvec2 pi = uvec2(gl_FragCoord.xy);
+        pi = (pi + (n >> 1))%n;
+        vec2 pf = vec2(pi) + 0.5;
+        float F = log(length(texture(ta, pf*d).rg*float(N)))/8.0; // TODO 8 is magick number
+        fragColor = vec4(F);
     }
 </script>
+<!-- }}} -->
 
-
+<!-- fscv3 {{{ -->
 <script type='x-shader/x-fragment' id='fscv3'>
     #version 300 es
     precision highp float;
@@ -97,31 +103,17 @@
     
     uniform int N;
     uniform vec2 d;
-    uniform sampler2D ta, tb;
+    uniform sampler2D ta;
     
     out vec4 fragColor;
     
-    uint reverse(uint n) {
-        uint res = 0u;
-        for(uint i=1u;i<uint(N);i<<=1u){
-            res <<= 1u;
-            res |= n & 1u;
-            n >>= 1u;
-        }
-        return res;
-    }
-    
     void main() {
-        uvec2 pi = uvec2(gl_FragCoord.xy);
-        pi.x = reverse(pi.x);
-        pi.y = reverse(pi.y);
-        vec2 pf = (vec2(pi)+0.5)*d;
-        vec4 c = texture(ta, pf);
-        fragColor = vec4(c.r, c.r, c.r, c.r);
+        fragColor = vec4(texture(ta, gl_FragCoord.xy*d).x);
     }
 </script>
+<!-- }}} -->
 
-
+<!-- fs0 {{{ -->
 <script type='x-shader/x-fragment' id='fs0'>
     #version 300 es
     precision highp float;
@@ -151,11 +143,12 @@
         vec2 pf = (vec2(pi) + 0.5)*d;
         vec4 c = texture(ta, pf);
         float gray = (c.r + c.g + c.b)/3.0;
-        fragColor = vec4(gray, 0.0, 0.0, 0.0);
+        fragColor = vec4(gray/float(N), 0.0, 0.0, 0.0);
     }
 </script>
+<!-- }}} -->
 
-
+<!-- fs1 {{{ -->
 <script type='x-shader/x-fragment' id='fs1'>
     #version 300 es
     precision highp float;
@@ -173,8 +166,7 @@
     }
 
     vec2 expi(uint n) {
-        float rf = 1.0/float(itr);
-        float y  = -2.0*acos(-1.0)*rf*float(n);
+        float y  = -2.0*acos(-1.0)/float(itr)*float(n);
         return vec2(cos(y), sin(y));
     }
     
@@ -190,64 +182,95 @@
         vec2 v2 = texture(ta, (vec2(pio+uvec2(0u,   m/2u)+pim)+0.5)*d).xy;
         vec2 v3 = texture(ta, (vec2(pio+uvec2(m/2u, m/2u)+pim)+0.5)*d).xy;
 
-        v0 = mul(v0, expi((0u)%m));
-        v1 = mul(v1, expi((pi.x)%m));
-        v2 = mul(v2, expi((pi.y)%m));
+        v0 = mul(v0, expi((0u       )%m));
+        v1 = mul(v1, expi((pi.x     )%m));
+        v2 = mul(v2, expi((pi.y     )%m));
         v3 = mul(v3, expi((pi.x+pi.y)%m));
-
-        //if(pi.y%m < m/2u){
-        //    if(pi.x%m < m/2u){
-        //        fragColor = vec4(v3.x, v3.y, 0.0, 0.0);
-        //    }else{
-        //        fragColor = vec4(v2.x, v2.y, 0.0, 0.0);
-        //    }
-        //}else{
-        //    if(pi.x%m < m/2u){
-        //        fragColor = vec4(v1.x, v1.y, 0.0, 0.0);
-        //    }else{
-        //        fragColor = vec4(v0.x, v0.x, 0.0, 0.0);
-        //    }
-        //}
-        //fragColor = texture(ta, gl_FragCoord.xy*d);
-
-        //if(pim.y < m/2u){
-        //    if(pim.x < m/2u){
-        //        v0 = mul(v0, expi((0u)%m));
-        //        v1 = mul(v1, expi((pi.x)%m));
-        //        v2 = mul(v2, expi((pi.y)%m));
-        //        v3 = mul(v3, expi((pi.x+pi.y)%m));
-        //    }else{
-        //        v0 = mul(v0, expi((0u)%m));
-        //        v1 = mul(v1, expi((pi.x)%m));
-        //        v2 = mul(v2, expi((pi.y)%m));
-        //        v3 = mul(v3, expi((pi.x)%m));
-        //    }
-        //}else{
-        //    if(pim.x < m/2u){
-        //        v0 = mul(v0, expi((pi.x)%m));
-        //        v1 = mul(v1, expi((0u)%m));
-        //        v2 = mul(v2, expi((pi.y)%m));
-        //        v3 = mul(v3, expi((pi.x+pi.y)%m));
-        //    }else{
-        //        v0 = mul(v0, expi((pi.x+pi.y)%m));
-        //        v1 = mul(v1, expi((0u)%m));
-        //        v2 = mul(v2, expi((0u)%m));
-        //        v3 = mul(v3, expi((0u)%m));
-        //    }
-        //}
 
         vec2 res = v0+v1+v2+v3;
         fragColor = vec4(res.x, res.y, 0.0, 0.0);
     }
 </script>
+<!-- }}} -->
 
-
+<!-- fs2 {{{ -->
 <script type='x-shader/x-fragment' id='fs2'>
+    #version 300 es
+    precision highp float;
+    precision mediump int;
+    
+    uniform int N;
+    uniform int itr;
+    uniform vec2 d;
+    uniform sampler2D ta, tb;
+    
+    out vec4 fragColor;
+
+    uint reverse(uint n) {
+        uint max_n = uint(N);
+        uint res = 0u;
+        for(uint i=1u;i<max_n;i<<=1u){
+            res <<= 1u;
+            res |= n & 1u;
+            n >>= 1u;
+        }
+        return res;
+    }
+    
+    void main() {
+        uvec2 pi = uvec2(gl_FragCoord.xy);
+        pi.x = reverse(pi.x);
+        pi.y = reverse(pi.y);
+        vec2 pf = (vec2(pi) + 0.5)*d;
+        fragColor = texture(ta, pf)/float(N);
+    }
 </script>
+<!-- }}} -->
 
-
+<!-- fs3 {{{ -->
 <script type='x-shader/x-fragment' id='fs3'>
+    #version 300 es
+    precision highp float;
+    precision mediump int;
+    
+    uniform int N;
+    uniform int itr;
+    uniform vec2 d;
+    uniform sampler2D ta;
+    
+    out vec4 fragColor;
+    
+    vec2 mul(vec2 a, vec2 b) {
+        return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x);
+    }
+    
+    vec2 expi(uint n) {
+        float y  = +2.0*acos(-1.0)/float(itr)*float(n);
+        return vec2(cos(y), sin(y));
+    }
+    
+    void main() {
+        uint n = uint(N);
+        uint m = uint(itr);
+        uvec2 pi = uvec2(gl_FragCoord.xy);
+        uvec2 pio = pi/m*m;
+        uvec2 pim = pi%(m/2u);
+    
+        vec2 v0 = texture(ta, (vec2(pio+uvec2(0u,   0u  )+pim)+0.5)*d).xy;
+        vec2 v1 = texture(ta, (vec2(pio+uvec2(m/2u, 0u  )+pim)+0.5)*d).xy;
+        vec2 v2 = texture(ta, (vec2(pio+uvec2(0u,   m/2u)+pim)+0.5)*d).xy;
+        vec2 v3 = texture(ta, (vec2(pio+uvec2(m/2u, m/2u)+pim)+0.5)*d).xy;
+    
+        v0 = mul(v0, expi((0u       )%m));
+        v1 = mul(v1, expi((pi.x     )%m));
+        v2 = mul(v2, expi((pi.y     )%m));
+        v3 = mul(v3, expi((pi.x+pi.y)%m));
+    
+        vec2 res = v0+v1+v2+v3;
+        fragColor = vec4(res.x, res.y, 0.0, 0.0);
+}
 </script>
+<!-- }}} -->
 
 
 <script lang="javascript">
@@ -261,6 +284,7 @@
     let mfscv    = [];  // ShaderMaterial for canvas
     let mfs      = [];  // ShaderMaterial for texture
     let tex      = [];  // textures
+    let texd     = [];  // textures for drawing
     let uniform  = [];
 
 
@@ -276,8 +300,22 @@
         magFilter: THREE.NearestFilter,
         minFilter: THREE.NearestFilter,
     };
+    // tex[0]
     tex.push(new THREE.WebGLRenderTarget(N, N, options));
+    // tex[1]
     tex.push([
+        new THREE.WebGLRenderTarget(N, N, options),
+        new THREE.WebGLRenderTarget(N, N, options),
+    ]);
+    // tex[2]
+    tex.push(new THREE.WebGLRenderTarget(N, N, options));
+    // tex[3]
+    tex.push([
+        new THREE.WebGLRenderTarget(N, N, options),
+        new THREE.WebGLRenderTarget(N, N, options),
+    ]);
+    // texd
+    texd.push([
         new THREE.WebGLRenderTarget(N, N, options),
         new THREE.WebGLRenderTarget(N, N, options),
     ]);
@@ -359,6 +397,12 @@
                 tex[0].texture = texture;
 
                 // phase 0
+                // render to tex[1][0];
+                mesh.material = mfs[0];
+                uniform[0].ta.value = tex[0].texture;
+                renderer.setRenderTarget(tex[1][0]);
+                renderer.render(scene, camera)
+
                 // render to canvas
                 mesh.material = mfscv[0];
                 uniform[0].ta.value = tex[0].texture;
@@ -366,18 +410,12 @@
                 renderer.render(scene, camera)
                 ctx[0].drawImage(renderer.domElement, 0, 0);
 
-                // render to tex[1][0];
-                mesh.material = mfs[0];
-                uniform[0].ta.value = tex[0].texture;
-                renderer.setRenderTarget(tex[1][0]);
-                renderer.render(scene, camera)
 
                 // phase 1
-                // forward fourier transform
+                // forward Fourier transform
                 mesh.material = mfs[1];
                 let ping = 0;
-                // TODO rename itr
-                for(let itr=2;itr<=N;itr*=2){
+                for(let itr=2;itr<=N;itr*=2){ // TODO rename itr
                     uniform[1].ta.value = tex[1][ping].texture;
                     uniform[1].itr.value = itr;
                     renderer.setRenderTarget(tex[1][1-ping]);
@@ -393,17 +431,40 @@
                 ctx[1].drawImage(renderer.domElement, 0, 0);
 
 
-                //mesh.material = mfscv[2];
-                //uniform[2].ta.value = tex[1][0].texture;
-                //renderer.setRenderTarget(null);
-                //renderer.render(scene, camera)
-                //ctx[2].drawImage(renderer.domElement, 0, 0);
+                // phase 2
+                // merge drawings
+                mesh.material = mfs[2];
+                uniform[2].ta.value = tex[1][ping].texture;
+                renderer.setRenderTarget(tex[3][0]);
+                renderer.render(scene, camera)
 
-                //mesh.material = mfscv[3];
-                //uniform[3].ta.value = tex[1][0].texture;
-                //renderer.setRenderTarget(null);
-                //renderer.render(scene, camera)
-                //ctx[3].drawImage(renderer.domElement, 0, 0);
+                // render to canvas
+                mesh.material = mfscv[2];
+                uniform[2].ta.value = tex[1][ping].texture;
+                //uniform[2].ta.value = texd[ping].texture; // TODO
+                renderer.setRenderTarget(null);
+                renderer.render(scene, camera)
+                ctx[2].drawImage(renderer.domElement, 0, 0);
+
+
+                // phase 3
+                // backward Fourier transform
+                mesh.material = mfs[3];
+                ping = 0;
+                for(let itr=2;itr<=N;itr*=2){ // TODO rename itr
+                    uniform[3].ta.value = tex[3][ping].texture;
+                    uniform[3].itr.value = itr;
+                    renderer.setRenderTarget(tex[3][1-ping]);
+                    renderer.render(scene, camera)
+                    ping = 1-ping;
+                }
+
+                // render to canvas
+                mesh.material = mfscv[3];
+                uniform[3].ta.value = tex[3][ping].texture;
+                renderer.setRenderTarget(null);
+                renderer.render(scene, camera)
+                ctx[3].drawImage(renderer.domElement, 0, 0);
             },
         },
     });
