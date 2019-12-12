@@ -60,7 +60,7 @@ let uniforms = {
     b_active:   {type: 'i',  value: 0},
     b_xy:       {type: 'v2', value: new THREE.Vector2(0.0, 0.0)},
     b_type:     {type: 'i',  value: 1},
-    b_r:        {type: 'f',  value: 0.005},
+    b_r:        {type: 'f',  value: 0.02},
     b_v:        {type: 'f',  value: 0.0},
 };
 for(let i=0;i<4;i++){
@@ -86,7 +86,8 @@ var app = new Vue({
         imageURL: 'image/lena.png',
         uniforms: uniforms,
         styleN: 512,
-        ping: 0,    // TODO
+        ping: 0,        // TODO
+        dofft: true,    // TODO
     }, 
     mounted: function () {
         // prepare renderer
@@ -102,7 +103,6 @@ var app = new Vue({
         this.uniforms.b_type.value = 3; // clear mask
 
         this.loadImage();
-        this.animation();
     },
     methods: {
         loadImage: function() {
@@ -131,6 +131,22 @@ var app = new Vue({
                 default:
                     this.uniforms.b_type.value = 1;
             }
+            this.dofft = true;
+            window.requestAnimationFrame(this.animation);
+        },
+        wheel: function(e) {
+            console.log(e.deltaY);
+            let b_r = this.uniforms.b_r.value;
+            if(e.deltaY > 0){
+                b_r += b_r*0.1;
+            }else{
+                b_r -= b_r*0.1;
+            }
+
+            b_r = Math.round(b_r*1000)/1000;
+
+            this.uniforms.b_r.value = Math.min(Math.max(b_r, 0.001), 0.2);
+            window.requestAnimationFrame(this.animation);
         },
         mouseUp: function() {
             this.uniforms.b_active.value = 0;
@@ -138,6 +154,11 @@ var app = new Vue({
         mouseMove: function(e) {
             this.uniforms.b_xy.value.x = e.offsetX/this.styleN;
             this.uniforms.b_xy.value.y = 1.0-e.offsetY/this.styleN;
+
+            if(this.uniforms.b_active.value){
+                this.dofft = true;
+            }
+            window.requestAnimationFrame(this.animation);
         },
         animation: function() {
             // render to canvas
@@ -182,25 +203,26 @@ var app = new Vue({
 
             // phase 3
             // backward Fourier transform
-            mesh.material = mfs[3];
-            var ping = 0;
-            for(let itr=2;itr<=N;itr*=2){ // TODO rename itr
+            if(this.dofft){
+                mesh.material = mfs[3];
+                var ping = 0;
+                for(let itr=2;itr<=N;itr*=2){ // TODO rename itr
+                    uniforms.ta.value = tex[3][ping].texture;
+                    uniforms.itr.value = itr;
+                    renderer.setRenderTarget(tex[3][1-ping]);
+                    renderer.render(scene, camera)
+                    ping = 1-ping;
+                }
+
+                // render to canvas
+                mesh.material = mfscv[3];
                 uniforms.ta.value = tex[3][ping].texture;
-                uniforms.itr.value = itr;
-                renderer.setRenderTarget(tex[3][1-ping]);
+                renderer.setRenderTarget(null);
                 renderer.render(scene, camera)
-                ping = 1-ping;
+                ctx[3].drawImage(renderer.domElement, 0, 0);
+
+                this.dofft = false;
             }
-
-            // render to canvas
-            mesh.material = mfscv[3];
-            uniforms.ta.value = tex[3][ping].texture;
-            renderer.setRenderTarget(null);
-            renderer.render(scene, camera)
-            ctx[3].drawImage(renderer.domElement, 0, 0);
-
-
-            window.requestAnimationFrame(this.animation);
         },
         init: function(texture) {
             texture.magFilter = THREE.NearestFilter;
@@ -236,6 +258,7 @@ var app = new Vue({
             renderer.setRenderTarget(tex[1][2]);
             renderer.render(scene, camera)
 
+            window.requestAnimationFrame(this.animation);
         },
     },
 });

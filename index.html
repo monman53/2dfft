@@ -27,7 +27,7 @@ canvas {
     image URL: 
     <input v-model='imageURL'> 
     <button v-on:click='loadImage'>Update</button><br>
-    <input type='range' min='0.0' max='0.2' step='0.001' v-model:number='uniforms.b_r.value'></input>size: {{uniforms.b_r.value}}<br>
+    <input type='range' min='0.001' max='0.2' step='0.001' v-model:number='uniforms.b_r.value'></input>size: {{uniforms.b_r.value}}<br>
     <input type='range' min='0.0' max='1.0' step='0.01' v-model:number='uniforms.b_v.value'></input>mask value: {{uniforms.b_v.value}}<br>
     <button @click='uniforms.b_type.value=3'>Clear</button><br>
     <canvas id='cv0' style='display: none;'></canvas>
@@ -35,6 +35,7 @@ canvas {
         @mousemove='mouseMove'
         @mousedown='mouseDown'
         @mouseup='mouseUp'
+        @wheel='wheel'
         style='cursor: crosshair;'
         oncontextmenu='return false'
         ></canvas>
@@ -42,6 +43,7 @@ canvas {
         @mousemove='mouseMove'
         @mousedown='mouseDown'
         @mouseup='mouseUp'
+        @wheel='wheel'
         style='cursor: crosshair;'
         oncontextmenu='return false'
         ></canvas>
@@ -97,7 +99,7 @@ canvas {
         fragColor = vec4(F);
 
         float dist = distance(b_xy, gl_FragCoord.xy*d);
-        if(b_r < dist && dist < b_r + 0.005){
+        if(b_r < dist && dist < b_r + 0.008){
             fragColor = vec4(1.0-F);
         }
     }
@@ -121,7 +123,7 @@ canvas {
         fragColor = vec4(mask.x);
 
         float dist = distance(b_xy, gl_FragCoord.xy*d);
-        if(b_r < dist && dist < b_r + 0.005){
+        if(b_r < dist && dist < b_r + 0.008){
             fragColor = vec4(1.0-mask.x);
         }
     }
@@ -170,10 +172,6 @@ canvas {
         }
         switch(b_type){
             case 3: fragColor.x = 1.0; break;
-        }
-
-        if(dist > b_r && dist < b_r+1.0*d.x){
-            fragColor.y = 1.0;
         }
     }
 </script>
