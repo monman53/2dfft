@@ -1,7 +1,7 @@
-<title>2D Fast Fourier Transform Live Demo</title>
+<title>2D Inverse Fourier Transform Playground</title>
 <meta charset="UTF-8">
 <meta name='viewport' content='width=device-width, initial-scale=1'>
-<meta name='description' content='2D fast Fourier transform(2DFFT) live demo using WebGL2.0.'>
+<meta name='description' content='2D fast Fourier transform live demo using WebGL2.0. 2DFFT'>
 <!-- <script src='https://cdn.jsdelivr.net/npm/vue/dist/vue.js'></script> -->
 <script src='vue.min.js'></script>
 <script src='three.min.js'></script>
@@ -9,6 +9,7 @@
 
 <style>
 canvas {
+    box-sizing: border-box;
     border: solid 1px;
     image-rendering:optimizeSpeed;             /* Legal fallback */
     image-rendering:-moz-crisp-edges;          /* Firefox        */
@@ -19,38 +20,83 @@ canvas {
     image-rendering:pixelated;                 /* CSS4 Proposed  */
     -ms-interpolation-mode:nearest-neighbor;   /* IE8+           */
 }
+.wrapper {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    /* grid-gap: 10px; */
+    /* grid-auto-rows: minmax(100px, auto); */
+}
+svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
 </style>
 
 <div class='app'>
-    <h1>2D Fast Fourier Transform Demo</h1>
-    <h2>Inverse Transform</h2>
+    <h1>2D Inverse Fourier Transform Playground</h1>
     image URL: 
     <input v-model='imageURL'> 
     <button v-on:click='loadImage'>Update</button><br>
-    <input type='range' min='0.001' max='0.2' step='0.001' v-model:number='uniforms.b_r.value'></input>size: {{uniforms.b_r.value}}<br>
-    <input type='range' min='0.0' max='1.0' step='0.01' v-model:number='uniforms.b_v.value'></input>mask value: {{uniforms.b_v.value}}<br>
-    <button @click='uniforms.b_type.value=3'>Clear</button><br>
+    <div class='wrapper'>
+        <div>
+            <h2>Power spectral</h2>
+            <div style='position: relative;'>
+                <canvas id='cv1'
+                    @mousemove='mouseMove'
+                    @mousedown='mouseDown'
+                    @mouseup='mouseUp'
+                    @mouseleave='uniforms.b_active.value=false'
+                    @wheel='wheel'
+                    style='cursor: crosshair;'
+                    oncontextmenu='return false'
+                ></canvas>
+                <svg :width='styleN' :height='styleN'>
+                    <circle
+                        :cx='uniforms.b_xy.value.x*styleN'
+                        :cy='(1.0-uniforms.b_xy.value.y)*styleN'
+                        :r='uniforms.b_r.value*styleN'
+                        stroke='red'
+                        fill='none'
+                        stroke-width='4'/>
+                </svg>
+            </div>
+        </div>
+        <div>
+            <h2>Mask editor</h2>
+            <div style='position: relative;'>
+                <canvas id='cv2'
+                    @mousemove='mouseMove'
+                    @mousedown='mouseDown'
+                    @mouseup='mouseUp'
+                    @mouseleave='uniforms.b_active.value=false'
+                    @wheel='wheel'
+                    style='cursor: crosshair;'
+                    oncontextmenu='return false'
+                ></canvas>
+                <svg :width='styleN' :height='styleN'>
+                    <circle
+                        :cx='uniforms.b_xy.value.x*styleN'
+                        :cy='(1.0-uniforms.b_xy.value.y)*styleN'
+                        :r='uniforms.b_r.value*styleN'
+                        stroke='red'
+                        fill='none'
+                        stroke-width='4'/>
+                </svg>
+            </div>
+            <input type='range' min='0.001' max='0.2' step='0.001' v-model:number='uniforms.b_r.value'></input>size: {{uniforms.b_r.value}}<br>
+            <input type='range' min='0.0' max='1.0' step='0.01' v-model:number='uniforms.b_v.value'></input>mask value: {{uniforms.b_v.value}}<br>
+            <button @click='clear'>Clear</button><br>
+            <!-- uniforms.b_active: {{uniforms.b_active}}<br> -->
+            <!-- uniforms.b_type: {{uniforms.b_type}}<br> -->
+        </div>
+        <div>
+            <h2>Result of inverse Fourier transform</h2>
+            <canvas id='cv3'></canvas>
+        </div>
+    </div>
     <canvas id='cv0' style='display: none;'></canvas>
-    <canvas id='cv2'
-        @mousemove='mouseMove'
-        @mousedown='mouseDown'
-        @mouseup='mouseUp'
-        @wheel='wheel'
-        style='cursor: crosshair;'
-        oncontextmenu='return false'
-        ></canvas>
-    <canvas id='cv1'
-        @mousemove='mouseMove'
-        @mousedown='mouseDown'
-        @mouseup='mouseUp'
-        @wheel='wheel'
-        style='cursor: crosshair;'
-        oncontextmenu='return false'
-        ></canvas>
-    <canvas id='cv3'></canvas>
-    <br>
-    uniforms.b_active: {{uniforms.b_active}}<br>
-    uniforms.b_type: {{uniforms.b_type}}<br>
 </div>
 
 
@@ -97,11 +143,6 @@ canvas {
         vec2 pf = vec2(pi) + 0.5;
         float F = log(length(texture(ta, pf*d).rg*float(N)))/8.0; // TODO 8 is magick number
         fragColor = vec4(F);
-
-        float dist = distance(b_xy, gl_FragCoord.xy*d);
-        if(b_r < dist && dist < b_r + 0.008){
-            fragColor = vec4(1.0-F);
-        }
     }
 </script>
 
@@ -121,11 +162,6 @@ canvas {
     void main() {
         vec4 mask = texture(tb, gl_FragCoord.xy*d);
         fragColor = vec4(mask.x);
-
-        float dist = distance(b_xy, gl_FragCoord.xy*d);
-        if(b_r < dist && dist < b_r + 0.008){
-            fragColor = vec4(1.0-mask.x);
-        }
     }
 </script>
 
@@ -166,7 +202,7 @@ canvas {
             if(dist < b_r){
                 switch(b_type){
                     case 1: fragColor.x = b_v; break;
-                    case 2: fragColor.x = 1.0-b_v; break;
+                    case 2: fragColor.x = 1.0; break;
                 }
             }
         }

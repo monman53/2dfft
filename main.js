@@ -1,6 +1,6 @@
 'use strict';
 
-let N = 256;        // image size (width and height)
+let N = 512;        // image size (width and height)
 
 let renderer;       // WebGLRenderer
 let ctx      = [];  // canvas contexts
@@ -60,6 +60,7 @@ let uniforms = {
     b_active:   {type: 'i',  value: 0},
     b_xy:       {type: 'v2', value: new THREE.Vector2(0.0, 0.0)},
     b_type:     {type: 'i',  value: 1},
+    b_shape:    {type: 'i',  calue: 0},
     b_r:        {type: 'f',  value: 0.02},
     b_v:        {type: 'f',  value: 0.0},
 };
@@ -134,19 +135,22 @@ var app = new Vue({
             this.dofft = true;
             window.requestAnimationFrame(this.animation);
         },
+        clear: function() {
+            this.uniforms.b_type.value = 3;
+            window.requestAnimationFrame(this.animation);
+        },
         wheel: function(e) {
-            console.log(e.deltaY);
-            let b_r = this.uniforms.b_r.value;
+            let b_r = Number.parseFloat(this.uniforms.b_r.value);
             if(e.deltaY > 0){
                 b_r += b_r*0.1;
             }else{
                 b_r -= b_r*0.1;
             }
 
+            b_r = Math.min(Math.max(b_r, 0.001), 0.2);
             b_r = Math.round(b_r*1000)/1000;
 
-            this.uniforms.b_r.value = Math.min(Math.max(b_r, 0.001), 0.2);
-            window.requestAnimationFrame(this.animation);
+            this.uniforms.b_r.value = b_r;
         },
         mouseUp: function() {
             this.uniforms.b_active.value = 0;
@@ -157,48 +161,43 @@ var app = new Vue({
 
             if(this.uniforms.b_active.value){
                 this.dofft = true;
+                window.requestAnimationFrame(this.animation);
             }
-            window.requestAnimationFrame(this.animation);
         },
         animation: function() {
-            // render to canvas
-            mesh.material = mfscv[1];
-            uniforms.ta.value = tex[1][2].texture;
-            renderer.setRenderTarget(null);
-            renderer.render(scene, camera)
-            ctx[1].drawImage(renderer.domElement, 0, 0);
-
-
             // drawings
             mesh.material = mfsd;
             let flag = false;
             if(this.uniforms.b_type.value == 3){
                 flag = true;
             }
-            uniforms.ta.value = texd[this.ping].texture;
-            renderer.setRenderTarget(texd[1-this.ping]);
-            renderer.render(scene, camera)
-            this.ping = 1-this.ping;
-            if(flag){
-                this.uniforms.b_type.value = 1;
+            if(flag || this.uniforms.b_active){
+                uniforms.ta.value = texd[this.ping].texture;
+                renderer.setRenderTarget(texd[1-this.ping]);
+                renderer.render(scene, camera)
+                this.ping = 1-this.ping;
+                if(flag){
+                    this.uniforms.b_type.value = 1;
+                }
+
+                // phase 2
+                // merge drawings
+                mesh.material = mfs[2];
+                uniforms.ta.value = tex[1][2].texture;
+                uniforms.tb.value = texd[this.ping].texture;
+                renderer.setRenderTarget(tex[3][0]);
+                renderer.render(scene, camera)
+
+                // render to canvas
+                mesh.material = mfscv[2];
+                uniforms.ta.value = tex[1][2].texture;
+                uniforms.tb.value = texd[this.ping].texture;
+                renderer.setRenderTarget(null);
+                renderer.render(scene, camera)
+                ctx[2].drawImage(renderer.domElement, 0, 0);
             }
 
 
-            // phase 2
-            // merge drawings
-            mesh.material = mfs[2];
-            uniforms.ta.value = tex[1][2].texture;
-            uniforms.tb.value = texd[this.ping].texture;
-            renderer.setRenderTarget(tex[3][0]);
-            renderer.render(scene, camera)
-
-            // render to canvas
-            mesh.material = mfscv[2];
-            uniforms.ta.value = tex[1][2].texture;
-            uniforms.tb.value = texd[this.ping].texture;
-            renderer.setRenderTarget(null);
-            renderer.render(scene, camera)
-            ctx[2].drawImage(renderer.domElement, 0, 0);
 
 
             // phase 3
@@ -237,11 +236,11 @@ var app = new Vue({
             renderer.render(scene, camera)
 
             // render to canvas
-            mesh.material = mfscv[0];
-            uniforms.ta.value = tex[0].texture;
-            renderer.setRenderTarget(null);
-            renderer.render(scene, camera)
-            ctx[0].drawImage(renderer.domElement, 0, 0);
+            //mesh.material = mfscv[0];
+            //uniforms.ta.value = tex[0].texture;
+            //renderer.setRenderTarget(null);
+            //renderer.render(scene, camera)
+            //ctx[0].drawImage(renderer.domElement, 0, 0);
 
 
             // phase 1
@@ -257,6 +256,13 @@ var app = new Vue({
             }
             renderer.setRenderTarget(tex[1][2]);
             renderer.render(scene, camera)
+
+            // render to canvas
+            mesh.material = mfscv[1];
+            uniforms.ta.value = tex[1][2].texture;
+            renderer.setRenderTarget(null);
+            renderer.render(scene, camera)
+            ctx[1].drawImage(renderer.domElement, 0, 0);
 
             window.requestAnimationFrame(this.animation);
         },
