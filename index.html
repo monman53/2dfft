@@ -61,7 +61,7 @@ svg {
                         stroke-width='4'/>
                 </svg>
             </div>
-            <input type='range' min='0.001' max='0.3' step='0.001' v-model:number='uniforms.b_r.value'></input>
+            <input type='range' min='0.001' max='0.3' step='0.0005' v-model:number='uniforms.b_r.value'></input>
             size: {{uniforms.b_r.value}}<br>
             <input type='range' min='0.0' max='1.0' step='0.01' v-model:number='uniforms.b_v.value'></input>
             mask value: {{uniforms.b_v.value}}<br>
@@ -197,7 +197,16 @@ svg {
 
 <script type='x-shader/x-fragment' id='fscv3'>
     void main() {
-        fragColor = vec4(texture(ta, gl_FragCoord.xy*d).x);
+        float gray = texture(ta, gl_FragCoord.xy*d).x;
+
+        float mmin = texture(tb, gl_FragCoord.xy*d).x;
+        float mmax = texture(tb, gl_FragCoord.xy*d).z;
+        //fragColor = vec4(gray*0.5+0.5);
+        //fragColor = vec4(mmin, mmax, 0.0, 0.0);
+        fragColor = vec4((gray-mmin)/(mmax-mmin));
+        if(mmin == mmax){
+            fragColor = vec4(0.5);
+        }
     }
 </script>
 
@@ -224,7 +233,7 @@ svg {
         vec2 pf = reverse(gl_FragCoord.xy);
         vec4 c = texture(ta, pf*d);
         float gray = (c.r + c.g + c.b)/3.0;
-        fragColor = vec4(gray/float(N), 0.0, 0.0, 0.0);
+        fragColor = vec4((gray-0.5)*2.0/float(N), 0.0, 0.0, 0.0);
     }
 </script>
 
@@ -277,7 +286,25 @@ svg {
         v3 = mul(v3, iw(pi.x+pi.y));
     
         vec2 res = v0+v1+v2+v3;
-        fragColor = vec4(res, 0.0, 0.0);
+        fragColor = vec4(res, res);
+}
+</script>
+
+<script type='x-shader/x-fragment' id='fs-minmax'>
+    void main() {
+        uint n = uint(N);
+        uint m = uint(itr);
+        uvec2 pi = uvec2(gl_FragCoord.xy);
+        uvec2 pio = pi&~(m>>1);
+    
+        vec4 v0 = texture(ta, vec2(pio                  )*d);
+        vec4 v1 = texture(ta, vec2(pio+uvec2(m>>1, 0u  ))*d);
+        vec4 v2 = texture(ta, vec2(pio+uvec2(0u,   m>>1))*d);
+        vec4 v3 = texture(ta, vec2(pio+uvec2(m>>1, m>>1))*d);
+    
+        float mmin = min(v0.x, min(v1.x, min(v2.x, v3.x)));
+        float mmax = max(v0.z, max(v1.z, max(v2.z, v3.z)));
+        fragColor = vec4(mmin, 0.0, mmax, 0.0);
 }
 </script>
 

@@ -5,9 +5,7 @@ const N = 512;        // image size (width and height)
 let ctx      = [];  // canvas contexts
 let mfscv    = [];  // ShaderMaterial for canvas
 let mfs      = [];  // ShaderMaterial for texture
-let mfsd;           // ShaderMaterial for drawing texture
 let tex      = [];  // textures
-let texd     = [];  // textures for drawing
 
 // renderer
 const canvas = document.createElement('canvas');
@@ -37,7 +35,11 @@ tex.push([
     new THREE.WebGLRenderTarget(N, N, options),
 ]);
 // texd
-texd = [
+let texd = [
+    new THREE.WebGLRenderTarget(N, N, options),
+    new THREE.WebGLRenderTarget(N, N, options),
+];
+let texMinMax = [
     new THREE.WebGLRenderTarget(N, N, options),
     new THREE.WebGLRenderTarget(N, N, options),
 ];
@@ -71,7 +73,8 @@ for(let i=0;i<4;i++){
     mfscv.push(createShaderMaterial('fscv'+i, uniforms));
     mfs.push(createShaderMaterial('fs'+i, uniforms));
 }
-mfsd = createShaderMaterial('fsd', uniforms);
+let mfsd = createShaderMaterial('fsd', uniforms);
+let mfsMinMax = createShaderMaterial('fs-minmax', uniforms);
 
 
 const scene    = new THREE.Scene();
@@ -189,11 +192,20 @@ const app = new Vue({
                     render(mfs[3], tex[3][0], null, tex[3][1], null);
                     tex[3] = [tex[3][1], tex[3][0]]; // swap
                 }
+                // find min max
+                uniforms.itr.value = 2;
+                render(mfsMinMax, tex[3][0], null, texMinMax[0], null);
+                for(let m=4;m<=N;m*=2){
+                    uniforms.itr.value = m;
+                    render(mfsMinMax, texMinMax[0], null, texMinMax[1], null);
+                    texMinMax = [texMinMax[1], texMinMax[0]]; // swap
+                }
                 // render to canvas
-                render(mfscv[3], tex[3][0], null, null, ctx[3]);
+                render(mfscv[3], tex[3][0], texMinMax[0], null, ctx[3]);
 
                 this.dofft = false;
             }
+
         },
         mouseDown: function(e) {
             this.uniforms.b_active.value = 1;
@@ -240,7 +252,7 @@ const app = new Vue({
             e.preventDefault();
 
             let b_r = Number.parseFloat(this.uniforms.b_r.value);
-            b_r += b_r * (e.deltaY > 0 ? 0.1 : -0.1);
+            b_r += b_r * (e.deltaY > 0 ? 0.2 : -0.2);
 
             b_r = Math.min(Math.max(b_r, 0.001), 0.3);
             b_r = Math.round(b_r*1000)/1000;
