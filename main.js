@@ -14,6 +14,7 @@ const canvas = document.createElement('canvas');
 const context = canvas.getContext('webgl2', {alpha: false});
 const renderer = new THREE.WebGLRenderer({canvas: canvas, context: context});
 renderer.setSize(N, N);
+renderer.autoClear = false;
 
 // textures
 const options = {
@@ -53,7 +54,7 @@ function createShaderMaterial(fsname, uniform) {
 }
 const uniforms = {
     N:          {type: 'i',  value: N},
-    itr:        {type: 'i',  value: 1},
+    itr:        {type: 'i',  value: 1}, // TODO rename itr
     d:          {type: 'v2', value: new THREE.Vector2(1.0/N, 1.0/N)},
     ta:         {type: 't',  value: undefined},
     tb:         {type: 't',  value: undefined},
@@ -80,6 +81,17 @@ scene.add(camera)
 const plane = new THREE.PlaneGeometry(1.0, 1.0);
 const mesh  = new THREE.Mesh(plane);
 scene.add(mesh);
+
+function render(material, texA, texB, target, ctx) {
+    mesh.material = material;
+    if(texA) uniforms.ta.value = texA.texture;
+    if(texB) uniforms.tb.value = texB.texture;
+    renderer.setRenderTarget(target);
+    renderer.render(scene, camera);
+    if(ctx){
+        ctx.drawImage(renderer.domElement, 0, 0);
+    }
+}
 
 const app = new Vue({
     el: '.app',
@@ -171,35 +183,21 @@ const app = new Vue({
 
             // phase 0
             // render to tex[1][0];
-            mesh.material = mfs[0];
-            uniforms.ta.value = tex[0].texture;
-            renderer.setRenderTarget(tex[1][0]);
-            renderer.render(scene, camera)
-
+            render(mfs[0], tex[0], null, tex[1][0], null);
             // render to canvas
-            mesh.material = mfscv[0];
-            renderer.setRenderTarget(null);
-            renderer.render(scene, camera)
-            ctx[0].drawImage(renderer.domElement, 0, 0);
+            render(mfscv[0], tex[0], null, null, ctx[0]);
 
 
             // phase 1
             // forward Fourier transform
-            mesh.material = mfs[1];
-            for(let itr=2;itr<=N;itr*=2){ // TODO rename itr
-                uniforms.ta.value = tex[1][0].texture;
-                uniforms.itr.value = itr;
-                renderer.setRenderTarget(tex[1][1]);
-                renderer.render(scene, camera)
-                tex[1] = [tex[1][1], tex[1][0]];
+            for(let m=2;m<=N;m*=2){
+                uniforms.itr.value = m;
+                render(mfs[1], tex[1][0], null, tex[1][1], null);
+                tex[1] = [tex[1][1], tex[1][0]];    // swap
             }
-
             // render to canvas
-            mesh.material = mfscv[1];
-            uniforms.ta.value = tex[1][0].texture;
-            renderer.setRenderTarget(null);
-            renderer.render(scene, camera)
-            ctx[1].drawImage(renderer.domElement, 0, 0);
+            render(mfscv[1], tex[1][0], null, null, ctx[1]);
+
 
             this.dofft = true;
             this.uniforms.b_type.value = 3; // clear mask
@@ -209,14 +207,12 @@ const app = new Vue({
         animation: function() {
             let flag = false;
             if(this.uniforms.b_type.value == 3){
+                this.dofft = true;
                 flag = true;
             }
             if(flag || this.uniforms.b_active){
                 // drawings
-                mesh.material = mfsd;
-                uniforms.ta.value = texd[0].texture;
-                renderer.setRenderTarget(texd[1]);
-                renderer.render(scene, camera)
+                render(mfsd, texd[0], null, texd[1], null);
                 texd = [texd[1], texd[0]];
                 if(flag){
                     this.uniforms.b_type.value = 1;
@@ -224,40 +220,22 @@ const app = new Vue({
 
                 // phase 2
                 // merge drawings
-                mesh.material = mfs[2];
-                uniforms.ta.value = tex[1][0].texture;
-                uniforms.tb.value = texd[0].texture;
-                renderer.setRenderTarget(tex[3][0]);
-                renderer.render(scene, camera)
-
+                render(mfs[2], tex[1][0], texd[0], tex[3][0], null);
                 // render to canvas
-                mesh.material = mfscv[2];
-                renderer.setRenderTarget(null);
-                renderer.render(scene, camera);
-                ctx[2].drawImage(renderer.domElement, 0, 0);
+                render(mfscv[2], tex[1][0], texd[0], null, ctx[2]);
             }
 
 
             // phase 3
             // backward Fourier transform
             if(this.dofft){
-                mesh.material = mfs[3];
-                // var ping = 0;
-                for(let itr=2;itr<=N;itr*=2){ // TODO rename itr
-                    uniforms.ta.value = tex[3][0].texture;
-                    uniforms.itr.value = itr;
-                    renderer.setRenderTarget(tex[3][1]);
-                    renderer.render(scene, camera);
-
+                for(let m=2;m<=N;m*=2){
+                    uniforms.itr.value = m;
+                    render(mfs[3], tex[3][0], null, tex[3][1], null);
                     tex[3] = [tex[3][1], tex[3][0]]; // swap
                 }
-
                 // render to canvas
-                mesh.material = mfscv[3];
-                uniforms.ta.value = tex[3][0].texture;
-                renderer.setRenderTarget(null);
-                renderer.render(scene, camera)
-                ctx[3].drawImage(renderer.domElement, 0, 0);
+                render(mfscv[3], tex[3][0], null, null, ctx[3]);
 
                 this.dofft = false;
             }
