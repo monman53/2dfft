@@ -1,8 +1,7 @@
 'use strict';
 
-let N = 512;        // image size (width and height)
+const N = 512;        // image size (width and height)
 
-let renderer;       // WebGLRenderer
 let ctx      = [];  // canvas contexts
 let mfscv    = [];  // ShaderMaterial for canvas
 let mfs      = [];  // ShaderMaterial for texture
@@ -11,13 +10,13 @@ let tex      = [];  // textures
 let texd     = [];  // textures for drawing
 
 // renderer
-let canvas = document.createElement('canvas');
-let context = canvas.getContext('webgl2', {alpha: false});
-renderer = new THREE.WebGLRenderer({canvas: canvas, context: context});
+const canvas = document.createElement('canvas');
+const context = canvas.getContext('webgl2', {alpha: false});
+const renderer = new THREE.WebGLRenderer({canvas: canvas, context: context});
 renderer.setSize(N, N);
 
 // textures
-var options = {
+const options = {
     type: THREE.FloatType,
     magFilter: THREE.NearestFilter,
     minFilter: THREE.NearestFilter,
@@ -26,7 +25,6 @@ var options = {
 tex.push(new THREE.WebGLRenderTarget(N, N, options));
 // tex[1]
 tex.push([
-    new THREE.WebGLRenderTarget(N, N, options),
     new THREE.WebGLRenderTarget(N, N, options),
     new THREE.WebGLRenderTarget(N, N, options),
 ]);
@@ -44,7 +42,7 @@ texd = [
 ];
 
 // prepare shader materials
-let createShaderMaterial = function(fsname, uniform) {
+function createShaderMaterial(fsname, uniform) {
     return new THREE.ShaderMaterial({
         vertexShader: document.getElementById('vs').textContent.trim(),
         fragmentShader:
@@ -53,7 +51,7 @@ let createShaderMaterial = function(fsname, uniform) {
         uniforms: uniform,
     })
 }
-let uniforms = {
+const uniforms = {
     N:          {type: 'i',  value: N},
     itr:        {type: 'i',  value: 1},
     d:          {type: 'v2', value: new THREE.Vector2(1.0/N, 1.0/N)},
@@ -73,23 +71,22 @@ for(let i=0;i<4;i++){
 mfsd = createShaderMaterial('fsd', uniforms);
 
 
-let scene    = new THREE.Scene();
-let camera   = new THREE.OrthographicCamera(-0.5, 0.5, 0.5, -0.5, -1, 1);
+const scene    = new THREE.Scene();
+const camera   = new THREE.OrthographicCamera(-0.5, 0.5, 0.5, -0.5, -1, 1);
 
 camera.position.z = 1;
 scene.add(camera)
 
-let plane = new THREE.PlaneGeometry(1.0, 1.0);
-let mesh  = new THREE.Mesh(plane);
+const plane = new THREE.PlaneGeometry(1.0, 1.0);
+const mesh  = new THREE.Mesh(plane);
 scene.add(mesh);
 
-var app = new Vue({
+const app = new Vue({
     el: '.app',
     data: {
         imageURL: 'image/lena.png',
         uniforms: uniforms,
         styleN: 512,
-        ping: 0,        // TODO
         dofft: true,    // TODO
     }, 
     mounted: function () {
@@ -181,7 +178,6 @@ var app = new Vue({
 
             // render to canvas
             mesh.material = mfscv[0];
-            uniforms.ta.value = tex[0].texture;
             renderer.setRenderTarget(null);
             renderer.render(scene, camera)
             ctx[0].drawImage(renderer.domElement, 0, 0);
@@ -190,20 +186,17 @@ var app = new Vue({
             // phase 1
             // forward Fourier transform
             mesh.material = mfs[1];
-            let ping = 0;
             for(let itr=2;itr<=N;itr*=2){ // TODO rename itr
-                uniforms.ta.value = tex[1][ping].texture;
+                uniforms.ta.value = tex[1][0].texture;
                 uniforms.itr.value = itr;
-                renderer.setRenderTarget(tex[1][1-ping]);
+                renderer.setRenderTarget(tex[1][1]);
                 renderer.render(scene, camera)
-                ping = 1-ping;
+                tex[1] = [tex[1][1], tex[1][0]];
             }
-            renderer.setRenderTarget(tex[1][2]);
-            renderer.render(scene, camera)
 
             // render to canvas
             mesh.material = mfscv[1];
-            uniforms.ta.value = tex[1][2].texture;
+            uniforms.ta.value = tex[1][0].texture;
             renderer.setRenderTarget(null);
             renderer.render(scene, camera)
             ctx[1].drawImage(renderer.domElement, 0, 0);
@@ -214,17 +207,17 @@ var app = new Vue({
             window.requestAnimationFrame(this.animation);
         },
         animation: function() {
-            // drawings
-            mesh.material = mfsd;
             let flag = false;
             if(this.uniforms.b_type.value == 3){
                 flag = true;
             }
             if(flag || this.uniforms.b_active){
-                uniforms.ta.value = texd[this.ping].texture;
-                renderer.setRenderTarget(texd[1-this.ping]);
+                // drawings
+                mesh.material = mfsd;
+                uniforms.ta.value = texd[0].texture;
+                renderer.setRenderTarget(texd[1]);
                 renderer.render(scene, camera)
-                this.ping = 1-this.ping;
+                texd = [texd[1], texd[0]];
                 if(flag){
                     this.uniforms.b_type.value = 1;
                 }
@@ -232,17 +225,15 @@ var app = new Vue({
                 // phase 2
                 // merge drawings
                 mesh.material = mfs[2];
-                uniforms.ta.value = tex[1][2].texture;
-                uniforms.tb.value = texd[this.ping].texture;
+                uniforms.ta.value = tex[1][0].texture;
+                uniforms.tb.value = texd[0].texture;
                 renderer.setRenderTarget(tex[3][0]);
                 renderer.render(scene, camera)
 
                 // render to canvas
                 mesh.material = mfscv[2];
-                uniforms.ta.value = tex[1][2].texture;
-                uniforms.tb.value = texd[this.ping].texture;
                 renderer.setRenderTarget(null);
-                renderer.render(scene, camera)
+                renderer.render(scene, camera);
                 ctx[2].drawImage(renderer.domElement, 0, 0);
             }
 
@@ -251,18 +242,19 @@ var app = new Vue({
             // backward Fourier transform
             if(this.dofft){
                 mesh.material = mfs[3];
-                var ping = 0;
+                // var ping = 0;
                 for(let itr=2;itr<=N;itr*=2){ // TODO rename itr
-                    uniforms.ta.value = tex[3][ping].texture;
+                    uniforms.ta.value = tex[3][0].texture;
                     uniforms.itr.value = itr;
-                    renderer.setRenderTarget(tex[3][1-ping]);
-                    renderer.render(scene, camera)
-                    ping = 1-ping;
+                    renderer.setRenderTarget(tex[3][1]);
+                    renderer.render(scene, camera);
+
+                    tex[3] = [tex[3][1], tex[3][0]]; // swap
                 }
 
                 // render to canvas
                 mesh.material = mfscv[3];
-                uniforms.ta.value = tex[3][ping].texture;
+                uniforms.ta.value = tex[3][0].texture;
                 renderer.setRenderTarget(null);
                 renderer.render(scene, camera)
                 ctx[3].drawImage(renderer.domElement, 0, 0);

@@ -142,12 +142,14 @@ svg {
         return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x);
     }
 
-    vec2 expi(uint n) {
-        float y  = -2.0*acos(-1.0)/float(itr)*float(n);
+    const float pi = acos(-1.0);
+
+    vec2 w(uint n) {
+        float y  = -2.0*pi/float(itr)*float(n);
         return vec2(cos(y), sin(y));
     }
-    vec2 iexpi(uint n) {
-        float y  = +2.0*acos(-1.0)/float(itr)*float(n);
+    vec2 iw(uint n) {
+        float y  = +2.0*pi/float(itr)*float(n);
         return vec2(cos(y), sin(y));
     }
 </script>
@@ -218,18 +220,17 @@ svg {
         uint n = uint(N);
         uint m = uint(itr);
         uvec2 pi = uvec2(gl_FragCoord.xy);
-        uvec2 pim = pi&((m>>1)-1u);
-        uvec2 pio = pi&~(m-1u)+pim;
+        uvec2 pio = pi&~(m>>1);
     
-        vec2 v0 = texture(ta, (vec2(pio+uvec2(0u,   0u  ))+0.5)*d).xy;
-        vec2 v1 = texture(ta, (vec2(pio+uvec2(m>>1, 0u  ))+0.5)*d).xy;
-        vec2 v2 = texture(ta, (vec2(pio+uvec2(0u,   m>>1))+0.5)*d).xy;
-        vec2 v3 = texture(ta, (vec2(pio+uvec2(m>>1, m>>1))+0.5)*d).xy;
+        vec2 v0 = texture(ta, vec2(pio+uvec2(0u,   0u  ))*d).xy;
+        vec2 v1 = texture(ta, vec2(pio+uvec2(m>>1, 0u  ))*d).xy;
+        vec2 v2 = texture(ta, vec2(pio+uvec2(0u,   m>>1))*d).xy;
+        vec2 v3 = texture(ta, vec2(pio+uvec2(m>>1, m>>1))*d).xy;
     
-        //v0 = mul(v0, expi((0u       )%m));
-        v1 = mul(v1, expi((pi.x     )&(m-1u)));
-        v2 = mul(v2, expi((pi.y     )&(m-1u)));
-        v3 = mul(v3, expi((pi.x+pi.y)&(m-1u)));
+        //v0 = mul(v0, w((0u       )%~m));
+        v1 = mul(v1, w((pi.x     )&~m));
+        v2 = mul(v2, w((pi.y     )&~m));
+        v3 = mul(v3, w((pi.x+pi.y)&~m));
 
         vec2 res = v0+v1+v2+v3;
         fragColor = vec4(res, 0.0, 0.0);
@@ -244,10 +245,8 @@ svg {
         pi = reverse(pi);
         vec2 pf = (vec2(pi) + 0.5)*d;
 
-        uvec2 mpi = uvec2(gl_FragCoord.xy);
-        mpi = reverse(mpi);
-        mpi = (mpi + (n >> 1))%n;
-        vec2 mpf = vec2(mpi) + 0.5;
+        pi = (pi + (n >> 1))%n;
+        vec2 mpf = vec2(pi) + 0.5;
         float mask = texture(tb, mpf*d).r;
 
         fragColor = texture(ta, pf)/float(N)*mask;
@@ -259,18 +258,17 @@ svg {
         uint n = uint(N);
         uint m = uint(itr);
         uvec2 pi = uvec2(gl_FragCoord.xy);
-        uvec2 pim = pi&((m>>1)-1u);
-        uvec2 pio = pi&~(m-1u)+pim;
+        uvec2 pio = pi&~(m>>1);
     
-        vec2 v0 = texture(ta, (vec2(pio+uvec2(0u,   0u  ))+0.5)*d).xy;
-        vec2 v1 = texture(ta, (vec2(pio+uvec2(m>>1, 0u  ))+0.5)*d).xy;
-        vec2 v2 = texture(ta, (vec2(pio+uvec2(0u,   m>>1))+0.5)*d).xy;
-        vec2 v3 = texture(ta, (vec2(pio+uvec2(m>>1, m>>1))+0.5)*d).xy;
+        vec2 v0 = texture(ta, vec2(pio+uvec2(0u,   0u  ))*d).xy;
+        vec2 v1 = texture(ta, vec2(pio+uvec2(m>>1, 0u  ))*d).xy;
+        vec2 v2 = texture(ta, vec2(pio+uvec2(0u,   m>>1))*d).xy;
+        vec2 v3 = texture(ta, vec2(pio+uvec2(m>>1, m>>1))*d).xy;
     
-        //v0 = mul(v0, expi((0u       )%m));
-        v1 = mul(v1, iexpi((pi.x     )&(m-1u)));
-        v2 = mul(v2, iexpi((pi.y     )&(m-1u)));
-        v3 = mul(v3, iexpi((pi.x+pi.y)&(m-1u)));
+        //v0 = mul(v0, iw((0u       )%~m));
+        v1 = mul(v1, iw((pi.x     )&~m));
+        v2 = mul(v2, iw((pi.y     )&~m));
+        v3 = mul(v3, iw((pi.x+pi.y)&~m));
     
         vec2 res = v0+v1+v2+v3;
         fragColor = vec4(res, 0.0, 0.0);
