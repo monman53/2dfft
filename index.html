@@ -41,6 +41,47 @@ svg {
     <button v-on:click='loadImage'>Update</button><br>
     <div class='wrapper'>
         <div>
+            <h2>Mask</h2>
+            <div style='position: relative;'>
+                <canvas id='cv2'
+                    @mousemove='mouseMove'
+                    @mousedown='mouseDown'
+                    @mouseup='mouseUp'
+                    @mouseleave='uniforms.b_active.value=false'
+                    @wheel='wheel'
+                    style='cursor: crosshair;'
+                    oncontextmenu='return false'
+                ></canvas>
+                <svg :width='styleN' :height='styleN'>
+                    <circle
+                        :cx='uniforms.b_xy.value.x*styleN'
+                        :cy='(1.0-uniforms.b_xy.value.y)*styleN'
+                        :r='uniforms.b_r.value*styleN'
+                        stroke='red'
+                        fill='none'
+                        stroke-width='4'/>
+                </svg>
+            </div>
+            <input type='range' min='0.001' max='0.3' step='0.001' v-model:number='uniforms.b_r.value'></input>size: {{uniforms.b_r.value}}<br>
+            <input type='range' min='0.0' max='1.0' step='0.01' v-model:number='uniforms.b_v.value'></input>mask value: {{uniforms.b_v.value}}<br>
+            <button @click='clear'>Clear</button><br>
+            <!-- uniforms.b_active: {{uniforms.b_active}}<br> -->
+            <!-- uniforms.b_type: {{uniforms.b_type}}<br> -->
+        </div>
+        <div>
+            <h2>Result</h2>
+            <canvas id='cv3'></canvas>
+        </div>
+        <div>
+            <h2>Original</h2>
+            <canvas id='cv0' style='display: display;'></canvas>
+        </div>
+
+        <div>
+        </div>
+        <div>
+        </div>
+        <div>
             <h2>Power spectral</h2>
             <div style='position: relative;'>
                 <canvas id='cv1'
@@ -63,40 +104,7 @@ svg {
                 </svg>
             </div>
         </div>
-        <div>
-            <h2>Mask editor</h2>
-            <div style='position: relative;'>
-                <canvas id='cv2'
-                    @mousemove='mouseMove'
-                    @mousedown='mouseDown'
-                    @mouseup='mouseUp'
-                    @mouseleave='uniforms.b_active.value=false'
-                    @wheel='wheel'
-                    style='cursor: crosshair;'
-                    oncontextmenu='return false'
-                ></canvas>
-                <svg :width='styleN' :height='styleN'>
-                    <circle
-                        :cx='uniforms.b_xy.value.x*styleN'
-                        :cy='(1.0-uniforms.b_xy.value.y)*styleN'
-                        :r='uniforms.b_r.value*styleN'
-                        stroke='red'
-                        fill='none'
-                        stroke-width='4'/>
-                </svg>
-            </div>
-            <input type='range' min='0.001' max='0.2' step='0.001' v-model:number='uniforms.b_r.value'></input>size: {{uniforms.b_r.value}}<br>
-            <input type='range' min='0.0' max='1.0' step='0.01' v-model:number='uniforms.b_v.value'></input>mask value: {{uniforms.b_v.value}}<br>
-            <button @click='clear'>Clear</button><br>
-            <!-- uniforms.b_active: {{uniforms.b_active}}<br> -->
-            <!-- uniforms.b_type: {{uniforms.b_type}}<br> -->
-        </div>
-        <div>
-            <h2>Result of inverse Fourier transform</h2>
-            <canvas id='cv3'></canvas>
-        </div>
     </div>
-    <canvas id='cv0' style='display: none;'></canvas>
 </div>
 
 

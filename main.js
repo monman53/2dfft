@@ -101,25 +101,9 @@ var app = new Vue({
             ctx.push(cv.getContext('2d'));
         }
 
-        this.uniforms.b_type.value = 3; // clear mask
-
         this.loadImage();
     },
     methods: {
-        loadImage: function() {
-            var loader = new THREE.TextureLoader();
-            loader.load(
-                this.imageURL,
-                // onLoad callback
-                this.init,
-                // onProgress callback currently not supported
-                undefined,
-                // onError callback
-                function() {
-                    console.error('Load Error');
-                }
-            );
-        },
         mouseDown: function(e) {
             this.uniforms.b_active.value = 1;
             switch(e.button) {
@@ -140,6 +124,9 @@ var app = new Vue({
             window.requestAnimationFrame(this.animation);
         },
         wheel: function(e) {
+
+            e.preventDefault();
+
             let b_r = Number.parseFloat(this.uniforms.b_r.value);
             if(e.deltaY > 0){
                 b_r += b_r*0.1;
@@ -147,7 +134,7 @@ var app = new Vue({
                 b_r -= b_r*0.1;
             }
 
-            b_r = Math.min(Math.max(b_r, 0.001), 0.2);
+            b_r = Math.min(Math.max(b_r, 0.001), 0.3);
             b_r = Math.round(b_r*1000)/1000;
 
             this.uniforms.b_r.value = b_r;
@@ -163,6 +150,66 @@ var app = new Vue({
                 this.dofft = true;
                 window.requestAnimationFrame(this.animation);
             }
+        },
+        loadImage: function() {
+            var loader = new THREE.TextureLoader();
+            loader.load(
+                this.imageURL,
+                // onLoad callback
+                this.init,
+                // onProgress callback currently not supported
+                undefined,
+                // onError callback
+                function() {
+                    console.error('Load Error');
+                }
+            );
+        },
+        init: function(texture) {
+            texture.magFilter = THREE.NearestFilter;
+            texture.minFilter = THREE.NearestFilter;
+            tex[0].texture = texture;
+
+            // phase 0
+            // render to tex[1][0];
+            mesh.material = mfs[0];
+            uniforms.ta.value = tex[0].texture;
+            renderer.setRenderTarget(tex[1][0]);
+            renderer.render(scene, camera)
+
+            // render to canvas
+            mesh.material = mfscv[0];
+            uniforms.ta.value = tex[0].texture;
+            renderer.setRenderTarget(null);
+            renderer.render(scene, camera)
+            ctx[0].drawImage(renderer.domElement, 0, 0);
+
+
+            // phase 1
+            // forward Fourier transform
+            mesh.material = mfs[1];
+            let ping = 0;
+            for(let itr=2;itr<=N;itr*=2){ // TODO rename itr
+                uniforms.ta.value = tex[1][ping].texture;
+                uniforms.itr.value = itr;
+                renderer.setRenderTarget(tex[1][1-ping]);
+                renderer.render(scene, camera)
+                ping = 1-ping;
+            }
+            renderer.setRenderTarget(tex[1][2]);
+            renderer.render(scene, camera)
+
+            // render to canvas
+            mesh.material = mfscv[1];
+            uniforms.ta.value = tex[1][2].texture;
+            renderer.setRenderTarget(null);
+            renderer.render(scene, camera)
+            ctx[1].drawImage(renderer.domElement, 0, 0);
+
+            this.dofft = true;
+            this.uniforms.b_type.value = 3; // clear mask
+
+            window.requestAnimationFrame(this.animation);
         },
         animation: function() {
             // drawings
@@ -198,8 +245,6 @@ var app = new Vue({
             }
 
 
-
-
             // phase 3
             // backward Fourier transform
             if(this.dofft){
@@ -222,49 +267,6 @@ var app = new Vue({
 
                 this.dofft = false;
             }
-        },
-        init: function(texture) {
-            texture.magFilter = THREE.NearestFilter;
-            texture.minFilter = THREE.NearestFilter;
-            tex[0].texture = texture;
-
-            // phase 0
-            // render to tex[1][0];
-            mesh.material = mfs[0];
-            uniforms.ta.value = tex[0].texture;
-            renderer.setRenderTarget(tex[1][0]);
-            renderer.render(scene, camera)
-
-            // render to canvas
-            //mesh.material = mfscv[0];
-            //uniforms.ta.value = tex[0].texture;
-            //renderer.setRenderTarget(null);
-            //renderer.render(scene, camera)
-            //ctx[0].drawImage(renderer.domElement, 0, 0);
-
-
-            // phase 1
-            // forward Fourier transform
-            mesh.material = mfs[1];
-            let ping = 0;
-            for(let itr=2;itr<=N;itr*=2){ // TODO rename itr
-                uniforms.ta.value = tex[1][ping].texture;
-                uniforms.itr.value = itr;
-                renderer.setRenderTarget(tex[1][1-ping]);
-                renderer.render(scene, camera)
-                ping = 1-ping;
-            }
-            renderer.setRenderTarget(tex[1][2]);
-            renderer.render(scene, camera)
-
-            // render to canvas
-            mesh.material = mfscv[1];
-            uniforms.ta.value = tex[1][2].texture;
-            renderer.setRenderTarget(null);
-            renderer.render(scene, camera)
-            ctx[1].drawImage(renderer.domElement, 0, 0);
-
-            window.requestAnimationFrame(this.animation);
         },
     },
 });
