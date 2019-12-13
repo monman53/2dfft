@@ -9,7 +9,7 @@
 
 <style>
 canvas {
-    box-sizing: border-box;
+    /* box-sizing: border-box; */
     border: solid 1px;
     image-rendering:optimizeSpeed;             /* Legal fallback */
     image-rendering:-moz-crisp-edges;          /* Firefox        */
@@ -22,7 +22,7 @@ canvas {
 }
 .wrapper {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     /* grid-gap: 10px; */
     /* grid-auto-rows: minmax(100px, auto); */
 }
@@ -41,6 +41,28 @@ svg {
     <button v-on:click='loadImage'>Update</button><br>
     <div class='wrapper'>
         <div>
+            <h2>Power spectral</h2>
+            <div style='position: relative;'>
+                <canvas id='cv1'
+                    @mousemove='mouseMove'
+                    @mousedown='mouseDown'
+                    @mouseup='mouseUp'
+                    @wheel='wheel'
+                    style='cursor: crosshair;'
+                    oncontextmenu='return false'
+                ></canvas>
+                <svg :width='styleN' :height='styleN'>
+                    <circle
+                        :cx='uniforms.b_xy.value.x*styleN'
+                        :cy='(1.0-uniforms.b_xy.value.y)*styleN'
+                        :r='uniforms.b_r.value/2*styleN/N'
+                        stroke='red'
+                        fill='none'
+                        stroke-width='4'/>
+                </svg>
+            </div>
+        </div>
+        <div>
             <h2>Mask</h2>
             <div style='position: relative;'>
                 <canvas id='cv2'
@@ -55,17 +77,17 @@ svg {
                     <circle
                         :cx='uniforms.b_xy.value.x*styleN'
                         :cy='(1.0-uniforms.b_xy.value.y)*styleN'
-                        :r='uniforms.b_r.value*styleN'
+                        :r='uniforms.b_r.value/2*styleN/N'
                         stroke='red'
                         fill='none'
                         stroke-width='4'/>
                 </svg>
             </div>
-            <input type='range' min='0.001' max='0.3' step='0.0005' v-model:number='uniforms.b_r.value'></input>
+            <input type='range' min='1' :max='N' step='1' v-model:number='uniforms.b_r.value'></input>
             size: {{uniforms.b_r.value}}<br>
             <input type='range' min='0.0' max='1.0' step='0.01' v-model:number='uniforms.b_v.value'></input>
             mask value: {{uniforms.b_v.value}}<br>
-            <button @click='clear'>Clear</button><br>
+            <button @click='clear'>Reset</button><br>
             <!-- uniforms.b_active: {{uniforms.b_active}}<br> -->
             <!-- uniforms.b_type: {{uniforms.b_type}}<br> -->
         </div>
@@ -81,28 +103,6 @@ svg {
         <div>
         </div>
         <div>
-        </div>
-        <div>
-            <h2>Power spectral</h2>
-            <div style='position: relative;'>
-                <canvas id='cv1'
-                    @mousemove='mouseMove'
-                    @mousedown='mouseDown'
-                    @mouseup='mouseUp'
-                    @wheel='wheel'
-                    style='cursor: crosshair;'
-                    oncontextmenu='return false'
-                ></canvas>
-                <svg :width='styleN' :height='styleN'>
-                    <circle
-                        :cx='uniforms.b_xy.value.x*styleN'
-                        :cy='(1.0-uniforms.b_xy.value.y)*styleN'
-                        :r='uniforms.b_r.value*styleN'
-                        stroke='red'
-                        fill='none'
-                        stroke-width='4'/>
-                </svg>
-            </div>
         </div>
     </div>
 </div>
@@ -173,8 +173,13 @@ svg {
 <script type='x-shader/x-fragment' id='fscv0'>
     void main() {
         vec4 c = texture(ta, gl_FragCoord.xy*d);
+        float mmin = texture(tb, gl_FragCoord.xy*d).x*float(N);
+        float mmax = texture(tb, gl_FragCoord.xy*d).z*float(N);
         float gray = (c.r + c.g + c.b)/3.0;
-        fragColor = vec4(gray);
+        fragColor = vec4((gray-mmin)/(mmax-mmin));
+        if(mmin == mmax){
+            fragColor = vec4(0.5);
+        }
     }
 </script>
 
@@ -198,11 +203,8 @@ svg {
 <script type='x-shader/x-fragment' id='fscv3'>
     void main() {
         float gray = texture(ta, gl_FragCoord.xy*d).x;
-
         float mmin = texture(tb, gl_FragCoord.xy*d).x;
         float mmax = texture(tb, gl_FragCoord.xy*d).z;
-        //fragColor = vec4(gray*0.5+0.5);
-        //fragColor = vec4(mmin, mmax, 0.0, 0.0);
         fragColor = vec4((gray-mmin)/(mmax-mmin));
         if(mmin == mmax){
             fragColor = vec4(0.5);
@@ -215,7 +217,7 @@ svg {
         fragColor.x = texture(ta, gl_FragCoord.xy*d).x;
         float dist2 = distance2_sp(b_s, b_t, gl_FragCoord.xy*d);
         if(b_active > 0){
-            if(dist2 < b_r*b_r){
+            if(dist2 < b_r*0.5*d.x*b_r*0.5*d.x || uvec2(b_xy*float(N)) == uvec2(gl_FragCoord.xy)){
                 switch(b_type){
                     case 1: fragColor.x = b_v; break;
                     case 2: fragColor.x = 1.0; break;
@@ -223,7 +225,7 @@ svg {
             }
         }
         switch(b_type){
-            case 3: fragColor.x = 1.0; break;
+            case 3: fragColor.x = 0.0; break;
         }
     }
 </script>
@@ -233,7 +235,7 @@ svg {
         vec2 pf = reverse(gl_FragCoord.xy);
         vec4 c = texture(ta, pf*d);
         float gray = (c.r + c.g + c.b)/3.0;
-        fragColor = vec4((gray-0.5)*2.0/float(N), 0.0, 0.0, 0.0);
+        fragColor = vec4(gray/float(N), 0.0, gray/float(N), 0.0);
     }
 </script>
 

@@ -1,6 +1,6 @@
 'use strict';
 
-const N = 512;        // image size (width and height)
+const N = 256;        // image size (width and height) max 512
 
 let ctx      = [];  // canvas contexts
 let mfscv    = [];  // ShaderMaterial for canvas
@@ -66,7 +66,7 @@ const uniforms = {
     b_t:        {type: 'v2', value: new THREE.Vector2(0.0, 0.0)},
     b_type:     {type: 'i',  value: 1},
     b_shape:    {type: 'i',  calue: 0},
-    b_r:        {type: 'f',  value: 0.02},
+    b_r:        {type: 'f',  value: 1},
     b_v:        {type: 'f',  value: 0.0},
 };
 for(let i=0;i<4;i++){
@@ -103,7 +103,8 @@ const app = new Vue({
     data: {
         imageURL: 'image/lena.png',
         uniforms: uniforms,
-        styleN: 512,
+        N: N,
+        styleN: 400,
         dofft: true,    // TODO
     }, 
     mounted: function () {
@@ -142,8 +143,16 @@ const app = new Vue({
             // phase 0
             // render to tex[1][0];
             render(mfs[0], tex[0], null, tex[1][0], null);
+            // find min max
+            uniforms.itr.value = 2;
+            render(mfsMinMax, tex[1][0], null, texMinMax[0], null);
+            for(let m=4;m<=N;m*=2){
+                uniforms.itr.value = m;
+                render(mfsMinMax, texMinMax[0], null, texMinMax[1], null);
+                texMinMax = [texMinMax[1], texMinMax[0]]; // swap
+            }
             // render to canvas
-            render(mfscv[0], tex[0], null, null, ctx[0]);
+            render(mfscv[0], tex[0], texMinMax[0], null, ctx[0]);
 
 
             // phase 1
@@ -211,13 +220,13 @@ const app = new Vue({
             this.uniforms.b_active.value = 1;
             switch(e.button) {
                 case 0:
-                    this.uniforms.b_type.value = 1;
-                    break;
-                case 2:
                     this.uniforms.b_type.value = 2;
                     break;
-                default:
+                case 2:
                     this.uniforms.b_type.value = 1;
+                    break;
+                default:
+                    this.uniforms.b_type.value = 2;
             }
             this.uniforms.b_xy.value.x =     e.offsetX/this.styleN;
             this.uniforms.b_xy.value.y = 1.0-e.offsetY/this.styleN;
@@ -250,14 +259,10 @@ const app = new Vue({
         },
         wheel: function(e) {
             e.preventDefault();
-
-            let b_r = Number.parseFloat(this.uniforms.b_r.value);
-            b_r += b_r * (e.deltaY > 0 ? 0.2 : -0.2);
-
-            b_r = Math.min(Math.max(b_r, 0.001), 0.3);
-            b_r = Math.round(b_r*1000)/1000;
-
-            this.uniforms.b_r.value = b_r;
+            let b_r = this.uniforms.b_r.value;
+            let step = Math.round(Math.log2(b_r+1));
+            b_r += e.deltaY > 0 ? step : -step;
+            this.uniforms.b_r.value = Math.min(Math.max(b_r, 1), this.N);
         },
     },
 });
