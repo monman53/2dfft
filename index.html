@@ -115,15 +115,44 @@ svg {
     }
 </script>
 
-<script type='x-shader/x-fragment' id='fscv0'>
+<script type='x-shader/x-fragment' id='fsh'>
     #version 300 es
     precision highp float;
-    
-    uniform vec2 d;
-    uniform sampler2D ta;
+    precision mediump int;
+
+    uniform int N, itr;
+    uniform sampler2D ta, tb;
+    uniform vec2 d, b_xy;
+    uniform int b_active, b_type;
+    uniform float b_r, b_v;
     
     out vec4 fragColor;
-    
+
+    uvec2 reverse(uvec2 n) {
+        uvec2 res = uvec2(0u);
+        for(uint i=1u;i<uint(N);i<<=1u){
+            res <<= 1u;
+            res |= n & 1u;
+            n >>= 1u;
+        }
+        return res;
+    }
+
+    vec2 mul(vec2 a, vec2 b) {
+        return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x);
+    }
+
+    vec2 expi(uint n) {
+        float y  = -2.0*acos(-1.0)/float(itr)*float(n);
+        return vec2(cos(y), sin(y));
+    }
+    vec2 iexpi(uint n) {
+        float y  = +2.0*acos(-1.0)/float(itr)*float(n);
+        return vec2(cos(y), sin(y));
+    }
+</script>
+
+<script type='x-shader/x-fragment' id='fscv0'>
     void main() {
         vec4 c = texture(ta, gl_FragCoord.xy*d);
         float gray = (c.r + c.g + c.b)/3.0;
@@ -132,18 +161,6 @@ svg {
 </script>
 
 <script type='x-shader/x-fragment' id='fscv1'>
-    #version 300 es
-    precision highp float;
-    precision mediump int;
-    
-    uniform int N;
-    uniform vec2 d;
-    uniform sampler2D ta;
-    uniform vec2 b_xy;
-    uniform float b_r;
-    
-    out vec4 fragColor;
-    
     void main() {
         uint n = uint(N);
         uvec2 pi = uvec2(gl_FragCoord.xy);
@@ -155,18 +172,6 @@ svg {
 </script>
 
 <script type='x-shader/x-fragment' id='fscv2'>
-    #version 300 es
-    precision highp float;
-    precision mediump int;
-    
-    uniform int N;
-    uniform vec2 d;
-    uniform sampler2D ta, tb;
-    uniform vec2 b_xy;
-    uniform float b_r;
-    
-    out vec4 fragColor;
-    
     void main() {
         vec4 mask = texture(tb, gl_FragCoord.xy*d);
         fragColor = vec4(mask.x);
@@ -174,35 +179,12 @@ svg {
 </script>
 
 <script type='x-shader/x-fragment' id='fscv3'>
-    #version 300 es
-    precision highp float;
-    precision mediump int;
-    
-    uniform int N;
-    uniform vec2 d;
-    uniform sampler2D ta;
-    
-    out vec4 fragColor;
-    
     void main() {
         fragColor = vec4(texture(ta, gl_FragCoord.xy*d).x);
     }
 </script>
 
 <script type='x-shader/x-fragment' id='fsd'>
-    #version 300 es
-    precision highp float;
-    precision mediump int;
-    
-    uniform int N;
-    uniform vec2 d, b_xy;
-    uniform int b_active, b_type;
-    uniform float b_r, b_v;
-    
-    uniform sampler2D ta;
-    
-    out vec4 fragColor;
-    
     void main() {
         fragColor.x = texture(ta, gl_FragCoord.xy*d).x;
         float dist = distance(gl_FragCoord.xy*d, b_xy);
@@ -221,26 +203,6 @@ svg {
 </script>
 
 <script type='x-shader/x-fragment' id='fs0'>
-    #version 300 es
-    precision highp float;
-    precision mediump int;
-    
-    uniform int N;
-    uniform vec2 d;
-    uniform sampler2D ta, tb;
-    
-    out vec4 fragColor;
-
-    uvec2 reverse(uvec2 n) {
-        uvec2 res = uvec2(0u);
-        for(uint i=1u;i<uint(N);i<<=1u){
-            res <<= 1u;
-            res |= n & 1u;
-            n >>= 1u;
-        }
-        return res;
-    }
-    
     void main() {
         uvec2 pi = uvec2(gl_FragCoord.xy);
         pi = reverse(pi);
@@ -252,26 +214,6 @@ svg {
 </script>
 
 <script type='x-shader/x-fragment' id='fs1'>
-    #version 300 es
-    precision highp float;
-    precision mediump int;
-    
-    uniform int N;
-    uniform int itr;
-    uniform vec2 d;
-    uniform sampler2D ta;
-    
-    out vec4 fragColor;
-
-    vec2 mul(vec2 a, vec2 b) {
-        return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x);
-    }
-
-    vec2 expi(uint n) {
-        float y  = -2.0*acos(-1.0)/float(itr)*float(n);
-        return vec2(cos(y), sin(y));
-    }
-    
     void main() {
         uint n = uint(N);
         uint m = uint(itr);
@@ -295,27 +237,6 @@ svg {
 </script>
 
 <script type='x-shader/x-fragment' id='fs2'>
-    #version 300 es
-    precision highp float;
-    precision mediump int;
-    
-    uniform int N;
-    uniform int itr;
-    uniform vec2 d;
-    uniform sampler2D ta, tb;
-    
-    out vec4 fragColor;
-
-    uvec2 reverse(uvec2 n) {
-        uvec2 res = uvec2(0u);
-        for(uint i=1u;i<uint(N);i<<=1u){
-            res <<= 1u;
-            res |= n & 1u;
-            n >>= 1u;
-        }
-        return res;
-    }
-    
     void main() {
         uint n = uint(N);
 
@@ -334,26 +255,6 @@ svg {
 </script>
 
 <script type='x-shader/x-fragment' id='fs3'>
-    #version 300 es
-    precision highp float;
-    precision mediump int;
-    
-    uniform int N;
-    uniform int itr;
-    uniform vec2 d;
-    uniform sampler2D ta;
-    
-    out vec4 fragColor;
-    
-    vec2 mul(vec2 a, vec2 b) {
-        return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x);
-    }
-    
-    vec2 expi(uint n) {
-        float y  = +2.0*acos(-1.0)/float(itr)*float(n);
-        return vec2(cos(y), sin(y));
-    }
-    
     void main() {
         uint n = uint(N);
         uint m = uint(itr);
@@ -367,15 +268,14 @@ svg {
         vec2 v3 = texture(ta, (vec2(pio+uvec2(m>>1, m>>1))+0.5)*d).xy;
     
         //v0 = mul(v0, expi((0u       )%m));
-        v1 = mul(v1, expi((pi.x     )&(m-1u)));
-        v2 = mul(v2, expi((pi.y     )&(m-1u)));
-        v3 = mul(v3, expi((pi.x+pi.y)&(m-1u)));
+        v1 = mul(v1, iexpi((pi.x     )&(m-1u)));
+        v2 = mul(v2, iexpi((pi.y     )&(m-1u)));
+        v3 = mul(v3, iexpi((pi.x+pi.y)&(m-1u)));
     
         vec2 res = v0+v1+v2+v3;
         fragColor = vec4(res, 0.0, 0.0);
 }
 </script>
-<!-- }}} -->
 
 
 <script src='main.js'></script>

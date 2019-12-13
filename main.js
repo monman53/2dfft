@@ -47,7 +47,9 @@ texd = [
 let createShaderMaterial = function(fsname, uniform) {
     return new THREE.ShaderMaterial({
         vertexShader: document.getElementById('vs').textContent.trim(),
-        fragmentShader: document.getElementById(fsname).textContent.trim(),
+        fragmentShader:
+            document.getElementById('fsh').textContent.trim() +
+            document.getElementById(fsname).textContent.trim(),
         uniforms: uniform,
     })
 }
