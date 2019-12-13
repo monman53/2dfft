@@ -47,7 +47,6 @@ svg {
                     @mousemove='mouseMove'
                     @mousedown='mouseDown'
                     @mouseup='mouseUp'
-                    @mouseleave='uniforms.b_active.value=false'
                     @wheel='wheel'
                     style='cursor: crosshair;'
                     oncontextmenu='return false'
@@ -62,8 +61,10 @@ svg {
                         stroke-width='4'/>
                 </svg>
             </div>
-            <input type='range' min='0.001' max='0.3' step='0.001' v-model:number='uniforms.b_r.value'></input>size: {{uniforms.b_r.value}}<br>
-            <input type='range' min='0.0' max='1.0' step='0.01' v-model:number='uniforms.b_v.value'></input>mask value: {{uniforms.b_v.value}}<br>
+            <input type='range' min='0.001' max='0.3' step='0.001' v-model:number='uniforms.b_r.value'></input>
+            size: {{uniforms.b_r.value}}<br>
+            <input type='range' min='0.0' max='1.0' step='0.01' v-model:number='uniforms.b_v.value'></input>
+            mask value: {{uniforms.b_v.value}}<br>
             <button @click='clear'>Clear</button><br>
             <!-- uniforms.b_active: {{uniforms.b_active}}<br> -->
             <!-- uniforms.b_type: {{uniforms.b_type}}<br> -->
@@ -88,7 +89,6 @@ svg {
                     @mousemove='mouseMove'
                     @mousedown='mouseDown'
                     @mouseup='mouseUp'
-                    @mouseleave='uniforms.b_active.value=false'
                     @wheel='wheel'
                     style='cursor: crosshair;'
                     oncontextmenu='return false'
@@ -122,35 +122,51 @@ svg {
 
     uniform int N, itr;
     uniform sampler2D ta, tb;
-    uniform vec2 d, b_xy;
+
+    // brush variables
+    uniform vec2 d, b_xy, b_s, b_t;
     uniform int b_active, b_type;
     uniform float b_r, b_v;
     
     out vec4 fragColor;
 
-    uvec2 reverse(uvec2 n) {
+    vec2 shift(vec2 p) {
+        return vec2((uvec2(p)+(uint(N)>>1))&~uint(N)) + 0.5;
+    }
+
+    vec2 reverse(vec2 p) {
+        uvec2 n = uvec2(p);
         uvec2 res = uvec2(0u);
-        for(uint i=1u;i<uint(N);i<<=1u){
+        for(uint i=1u;(i&uint(N))==0u;i<<=1u){
             res <<= 1u;
             res |= n & 1u;
             n >>= 1u;
         }
-        return res;
+        return vec2(res)+0.5;
     }
 
-    vec2 mul(vec2 a, vec2 b) {
+    vec2 mul(const vec2 a, const vec2 b) {
         return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x);
     }
 
     const float pi = acos(-1.0);
 
-    vec2 w(uint n) {
+    vec2 w(const uint n) {
         float y  = -2.0*pi/float(itr)*float(n);
         return vec2(cos(y), sin(y));
     }
-    vec2 iw(uint n) {
+    
+    vec2 iw(const uint n) {
         float y  = +2.0*pi/float(itr)*float(n);
         return vec2(cos(y), sin(y));
+    }
+
+    float distance2_sp(vec2 s, vec2 t, vec2 p) {
+        float l2 = dot(t-s, t-s);
+        if(l2 == 0.0) return dot(p-s, p-s);
+        float a = max(0., min(1., dot(p-s, t-s)/l2));
+        vec2 proj = s+a*(t-s);
+        return dot(p-proj, p-proj);
     }
 </script>
 
@@ -164,10 +180,7 @@ svg {
 
 <script type='x-shader/x-fragment' id='fscv1'>
     void main() {
-        uint n = uint(N);
-        uvec2 pi = uvec2(gl_FragCoord.xy);
-        pi = (pi + (n >> 1))%n;
-        vec2 pf = vec2(pi) + 0.5;
+        vec2 pf = shift(gl_FragCoord.xy);
         float F = log(length(texture(ta, pf*d).rg*float(N)))/8.0; // TODO 8 is magick number
         fragColor = vec4(F);
     }
@@ -175,8 +188,10 @@ svg {
 
 <script type='x-shader/x-fragment' id='fscv2'>
     void main() {
+        vec2 pf = shift(gl_FragCoord.xy);
+        float F = log(length(texture(ta, pf*d).rg*float(N)))/8.0; // TODO 8 is magick number
         vec4 mask = texture(tb, gl_FragCoord.xy*d);
-        fragColor = vec4(mask.x);
+        fragColor = vec4(F*mask.x);
     }
 </script>
 
@@ -189,9 +204,9 @@ svg {
 <script type='x-shader/x-fragment' id='fsd'>
     void main() {
         fragColor.x = texture(ta, gl_FragCoord.xy*d).x;
-        float dist = distance(gl_FragCoord.xy*d, b_xy);
+        float dist2 = distance2_sp(b_s, b_t, gl_FragCoord.xy*d);
         if(b_active > 0){
-            if(dist < b_r){
+            if(dist2 < b_r*b_r){
                 switch(b_type){
                     case 1: fragColor.x = b_v; break;
                     case 2: fragColor.x = 1.0; break;
@@ -206,10 +221,8 @@ svg {
 
 <script type='x-shader/x-fragment' id='fs0'>
     void main() {
-        uvec2 pi = uvec2(gl_FragCoord.xy);
-        pi = reverse(pi);
-        vec2 pf = (vec2(pi) + 0.5)*d;
-        vec4 c = texture(ta, pf);
+        vec2 pf = reverse(gl_FragCoord.xy);
+        vec4 c = texture(ta, pf*d);
         float gray = (c.r + c.g + c.b)/3.0;
         fragColor = vec4(gray/float(N), 0.0, 0.0, 0.0);
     }
@@ -222,15 +235,15 @@ svg {
         uvec2 pi = uvec2(gl_FragCoord.xy);
         uvec2 pio = pi&~(m>>1);
     
-        vec2 v0 = texture(ta, vec2(pio+uvec2(0u,   0u  ))*d).xy;
+        vec2 v0 = texture(ta, vec2(pio                  )*d).xy;
         vec2 v1 = texture(ta, vec2(pio+uvec2(m>>1, 0u  ))*d).xy;
         vec2 v2 = texture(ta, vec2(pio+uvec2(0u,   m>>1))*d).xy;
         vec2 v3 = texture(ta, vec2(pio+uvec2(m>>1, m>>1))*d).xy;
     
-        //v0 = mul(v0, w((0u       )%~m));
-        v1 = mul(v1, w((pi.x     )&~m));
-        v2 = mul(v2, w((pi.y     )&~m));
-        v3 = mul(v3, w((pi.x+pi.y)&~m));
+        //v0 = mul(v0, w(0u       ));
+        v1 = mul(v1, w(pi.x     ));
+        v2 = mul(v2, w(pi.y     ));
+        v3 = mul(v3, w(pi.x+pi.y));
 
         vec2 res = v0+v1+v2+v3;
         fragColor = vec4(res, 0.0, 0.0);
@@ -239,17 +252,10 @@ svg {
 
 <script type='x-shader/x-fragment' id='fs2'>
     void main() {
-        uint n = uint(N);
-
-        uvec2 pi = uvec2(gl_FragCoord.xy);
-        pi = reverse(pi);
-        vec2 pf = (vec2(pi) + 0.5)*d;
-
-        pi = (pi + (n >> 1))%n;
-        vec2 mpf = vec2(pi) + 0.5;
+        vec2 pf = reverse(gl_FragCoord.xy);
+        vec2 mpf = shift(pf);
         float mask = texture(tb, mpf*d).r;
-
-        fragColor = texture(ta, pf)/float(N)*mask;
+        fragColor = texture(ta, pf*d)/float(N)*mask;
     }
 </script>
 
@@ -260,15 +266,15 @@ svg {
         uvec2 pi = uvec2(gl_FragCoord.xy);
         uvec2 pio = pi&~(m>>1);
     
-        vec2 v0 = texture(ta, vec2(pio+uvec2(0u,   0u  ))*d).xy;
+        vec2 v0 = texture(ta, vec2(pio                  )*d).xy;
         vec2 v1 = texture(ta, vec2(pio+uvec2(m>>1, 0u  ))*d).xy;
         vec2 v2 = texture(ta, vec2(pio+uvec2(0u,   m>>1))*d).xy;
         vec2 v3 = texture(ta, vec2(pio+uvec2(m>>1, m>>1))*d).xy;
     
-        //v0 = mul(v0, iw((0u       )%~m));
-        v1 = mul(v1, iw((pi.x     )&~m));
-        v2 = mul(v2, iw((pi.y     )&~m));
-        v3 = mul(v3, iw((pi.x+pi.y)&~m));
+        //v0 = mul(v0, iw(0u       ));
+        v1 = mul(v1, iw(pi.x     ));
+        v2 = mul(v2, iw(pi.y     ));
+        v3 = mul(v3, iw(pi.x+pi.y));
     
         vec2 res = v0+v1+v2+v3;
         fragColor = vec4(res, 0.0, 0.0);

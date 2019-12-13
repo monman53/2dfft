@@ -60,6 +60,8 @@ const uniforms = {
     tb:         {type: 't',  value: undefined},
     b_active:   {type: 'i',  value: 0},
     b_xy:       {type: 'v2', value: new THREE.Vector2(0.0, 0.0)},
+    b_s:        {type: 'v2', value: new THREE.Vector2(0.0, 0.0)},
+    b_t:        {type: 'v2', value: new THREE.Vector2(0.0, 0.0)},
     b_type:     {type: 'i',  value: 1},
     b_shape:    {type: 'i',  calue: 0},
     b_r:        {type: 'f',  value: 0.02},
@@ -115,53 +117,6 @@ const app = new Vue({
         this.loadImage();
     },
     methods: {
-        mouseDown: function(e) {
-            this.uniforms.b_active.value = 1;
-            switch(e.button) {
-                case 0:
-                    this.uniforms.b_type.value = 1;
-                    break;
-                case 2:
-                    this.uniforms.b_type.value = 2;
-                    break;
-                default:
-                    this.uniforms.b_type.value = 1;
-            }
-            this.dofft = true;
-            window.requestAnimationFrame(this.animation);
-        },
-        clear: function() {
-            this.uniforms.b_type.value = 3;
-            window.requestAnimationFrame(this.animation);
-        },
-        wheel: function(e) {
-
-            e.preventDefault();
-
-            let b_r = Number.parseFloat(this.uniforms.b_r.value);
-            if(e.deltaY > 0){
-                b_r += b_r*0.1;
-            }else{
-                b_r -= b_r*0.1;
-            }
-
-            b_r = Math.min(Math.max(b_r, 0.001), 0.3);
-            b_r = Math.round(b_r*1000)/1000;
-
-            this.uniforms.b_r.value = b_r;
-        },
-        mouseUp: function() {
-            this.uniforms.b_active.value = 0;
-        },
-        mouseMove: function(e) {
-            this.uniforms.b_xy.value.x = e.offsetX/this.styleN;
-            this.uniforms.b_xy.value.y = 1.0-e.offsetY/this.styleN;
-
-            if(this.uniforms.b_active.value){
-                this.dofft = true;
-                window.requestAnimationFrame(this.animation);
-            }
-        },
         loadImage: function() {
             var loader = new THREE.TextureLoader();
             loader.load(
@@ -239,6 +194,58 @@ const app = new Vue({
 
                 this.dofft = false;
             }
+        },
+        mouseDown: function(e) {
+            this.uniforms.b_active.value = 1;
+            switch(e.button) {
+                case 0:
+                    this.uniforms.b_type.value = 1;
+                    break;
+                case 2:
+                    this.uniforms.b_type.value = 2;
+                    break;
+                default:
+                    this.uniforms.b_type.value = 1;
+            }
+            this.uniforms.b_xy.value.x =     e.offsetX/this.styleN;
+            this.uniforms.b_xy.value.y = 1.0-e.offsetY/this.styleN;
+            this.uniforms.b_s.value.x = this.uniforms.b_xy.value.x;
+            this.uniforms.b_s.value.y = this.uniforms.b_xy.value.y;
+            this.uniforms.b_t.value.x = this.uniforms.b_xy.value.x;
+            this.uniforms.b_t.value.y = this.uniforms.b_xy.value.y;
+            this.dofft = true;
+            window.requestAnimationFrame(this.animation);
+        },
+        mouseUp: function() {
+            this.uniforms.b_active.value = 0;
+        },
+        mouseMove: function(e) {
+            this.uniforms.b_xy.value.x =     e.offsetX/this.styleN;
+            this.uniforms.b_xy.value.y = 1.0-e.offsetY/this.styleN;
+            this.uniforms.b_s.value.x = this.uniforms.b_t.value.x;
+            this.uniforms.b_s.value.y = this.uniforms.b_t.value.y;
+            this.uniforms.b_t.value.x = this.uniforms.b_xy.value.x;
+            this.uniforms.b_t.value.y = this.uniforms.b_xy.value.y;
+
+            if(this.uniforms.b_active.value){
+                this.dofft = true;
+                window.requestAnimationFrame(this.animation);
+            }
+        },
+        clear: function() {
+            this.uniforms.b_type.value = 3;
+            window.requestAnimationFrame(this.animation);
+        },
+        wheel: function(e) {
+            e.preventDefault();
+
+            let b_r = Number.parseFloat(this.uniforms.b_r.value);
+            b_r += b_r * (e.deltaY > 0 ? 0.1 : -0.1);
+
+            b_r = Math.min(Math.max(b_r, 0.001), 0.3);
+            b_r = Math.round(b_r*1000)/1000;
+
+            this.uniforms.b_r.value = b_r;
         },
     },
 });
