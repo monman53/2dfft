@@ -100,13 +100,33 @@ svg {
             <canvas id='cv-wave'></canvas>
         </div>
         <div>
+            <div style='position: relative;'>
+                <canvas id='cv-mask'
+                    @mousemove='mouseMove'
+                    @mousedown='mouseDown'
+                    @mouseup='mouseUp'
+                    @wheel='wheel'
+                    style='cursor: crosshair;'
+                    oncontextmenu='return false'>
+                </canvas>
+                <svg :width='styleN' :height='styleN'>
+                    <circle
+                        :cx='uniforms.b_xy.value.x*styleN'
+                        :cy='(1.0-uniforms.b_xy.value.y)*styleN'
+                        :r='uniforms.b_r.value/2*styleN/N'
+                        stroke='red'
+                        fill='none'
+                        stroke-width='2'/>
+                </svg>
+            </div>
+        </div>
+        <div>
             <button @click='clear'>Reset</button><br>
             <input type='range' min='1' :max='N' step='1' v-model:number='uniforms.b_r.value'></input>
             Size: {{uniforms.b_r.value}}<br>
             <input type='range' min='0.0' max='1.0' step='0.01' v-model:number='uniforms.b_v.value'></input>
             Mask value: {{uniforms.b_v.value}}<br>
         </div>
-        <div></div>
 
     </div>
     <!-- uniforms.b_active: {{uniforms.b_active}}<br> -->
@@ -220,7 +240,7 @@ svg {
     }
 </script>
 
-<script type='x-shader/x-fragment' id='fsd'>
+<script type='x-shader/x-fragment' id='fs-draw'>
     void main() {
         fragColor.x = texture(ta, gl_FragCoord.xy*d).x;
         float dist2 = distance2_sp(b_s, b_t, gl_FragCoord.xy*d);
@@ -235,6 +255,21 @@ svg {
         switch(b_type){
             case 3: fragColor.x = 0.0; break;
         }
+    }
+</script>
+
+<script type='x-shader/x-fragment' id='fs-mask'>
+    void main() {
+        float mask = texture(ta, gl_FragCoord.xy*d).r;
+        fragColor = vec4(mask);
+    }
+</script>
+
+<script type='x-shader/x-fragment' id='fs-gray'>
+    void main() {
+        vec4 c = texture(ta, pf*d);
+        float gray = (c.r + c.g + c.b)/3.0;
+        fragColor = vec4(gray/float(N));
     }
 </script>
 

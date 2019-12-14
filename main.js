@@ -2,11 +2,6 @@
 
 const N = 1 << 8;   // image size (width and height), must be 2^n
 
-let ctx      = [];  // canvas contexts
-let ctxWave;
-let mfscv    = [];  // ShaderMaterial for canvas
-let mfs      = [];  // ShaderMaterial for texture
-let tex      = [];  // textures
 
 // renderer
 const canvas = document.createElement('canvas');
@@ -21,6 +16,7 @@ const options = {
     magFilter: THREE.NearestFilter,
     minFilter: THREE.NearestFilter,
 };
+let tex      = [];  // textures
 // tex[0]
 tex.push(new THREE.WebGLRenderTarget(N, N, options));
 // tex[1]
@@ -35,8 +31,7 @@ tex.push([
     new THREE.WebGLRenderTarget(N, N, options),
     new THREE.WebGLRenderTarget(N, N, options),
 ]);
-// texd
-let texd = [
+let texDraw   = [
     new THREE.WebGLRenderTarget(N, N, options),
     new THREE.WebGLRenderTarget(N, N, options),
 ];
@@ -71,11 +66,15 @@ const uniforms = {
     b_v:        {type: 'f',  value: 1.0},
     mouse:      {type: 'iv2', value: new THREE.Vector2(0, 0)},
 };
+let mfscv    = [];  // ShaderMaterial for canvas
+let mfs      = [];  // ShaderMaterial for texture
 for(let i=0;i<4;i++){
     mfscv.push(createShaderMaterial('fscv'+i, uniforms));
     mfs.push(createShaderMaterial('fs'+i, uniforms));
 }
-let mfsd = createShaderMaterial('fsd', uniforms);
+let mfsDraw   = createShaderMaterial('fs-draw', uniforms);
+let mfsGray   = createShaderMaterial('fs-gray', uniforms);
+let mfsMask   = createShaderMaterial('fs-mask', uniforms);
 let mfsMinMax = createShaderMaterial('fs-minmax', uniforms);
 let mfsWave   = createShaderMaterial('fs-wave', uniforms);
 
@@ -100,6 +99,10 @@ function render(material, texA, texB, target, ctx) {
         ctx.drawImage(renderer.domElement, 0, 0);
     }
 }
+
+let ctx      = [];  // canvas contexts
+let ctxWave;
+let ctxMask;
 
 const app = new Vue({
     el: '.app',
@@ -132,6 +135,7 @@ const app = new Vue({
             ctx.push(createContext(this, 'cv'+i));
         }
         ctxWave = createContext(this, 'cv-wave');
+        ctxMask = createContext(this, 'cv-mask');
 
         this.loadImage(this.images[0]);
     },
@@ -199,17 +203,19 @@ const app = new Vue({
             }
             if(flag || this.uniforms.b_active){
                 // drawings
-                render(mfsd, texd[0], null, texd[1], null);
-                texd = [texd[1], texd[0]];
+                render(mfsDraw, texDraw[0], null, texDraw[1], null);
+                texDraw = [texDraw[1], texDraw[0]];
                 if(flag){
                     this.uniforms.b_type.value = 1;
                 }
                 // phase 2
                 // merge drawings
-                render(mfs[2], tex[1][0], texd[0], tex[3][0], null);
+                render(mfs[2], tex[1][0], texDraw[0], tex[3][0], null);
                 // render to canvas
-                render(mfscv[2], tex[1][0], texd[0], null, ctx[2]);
+                render(mfscv[2], tex[1][0], texDraw[0], null, ctx[2]);
             }
+            // Mask
+            render(mfsMask, texDraw[0], null, null, ctxMask);
             // Wave
             uniforms.itr.value = N;
             render(mfsWave, tex[1][0], null, null, ctxWave);
