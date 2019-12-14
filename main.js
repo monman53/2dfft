@@ -1,8 +1,9 @@
 'use strict';
 
-const N = 256;        // image size (width and height) max 512
+const N = 1 << 3;   // image size (width and height), must be 2^n
 
 let ctx      = [];  // canvas contexts
+let ctxWave;
 let mfscv    = [];  // ShaderMaterial for canvas
 let mfs      = [];  // ShaderMaterial for texture
 let tex      = [];  // textures
@@ -61,13 +62,14 @@ const uniforms = {
     ta:         {type: 't',  value: undefined},
     tb:         {type: 't',  value: undefined},
     b_active:   {type: 'i',  value: 0},
-    b_xy:       {type: 'v2', value: new THREE.Vector2(0.0, 0.0)},
-    b_s:        {type: 'v2', value: new THREE.Vector2(0.0, 0.0)},
-    b_t:        {type: 'v2', value: new THREE.Vector2(0.0, 0.0)},
+    b_xy:       {type: 'v2', value: new THREE.Vector2(0.5, 0.5)},
+    b_s:        {type: 'v2', value: new THREE.Vector2(0.5, 0.5)},
+    b_t:        {type: 'v2', value: new THREE.Vector2(0.5, 0.5)},
     b_type:     {type: 'i',  value: 1},
     b_shape:    {type: 'i',  calue: 0},
     b_r:        {type: 'f',  value: 1},
     b_v:        {type: 'f',  value: 0.0},
+    mouse:      {type: 'iv2', value: new THREE.Vector2(0, 0)},
 };
 for(let i=0;i<4;i++){
     mfscv.push(createShaderMaterial('fscv'+i, uniforms));
@@ -75,6 +77,7 @@ for(let i=0;i<4;i++){
 }
 let mfsd = createShaderMaterial('fsd', uniforms);
 let mfsMinMax = createShaderMaterial('fs-minmax', uniforms);
+let mfsWave   = createShaderMaterial('fs-wave', uniforms);
 
 
 const scene    = new THREE.Scene();
@@ -104,19 +107,23 @@ const app = new Vue({
         imageURL: 'image/lena.png',
         uniforms: uniforms,
         N: N,
-        styleN: 400,
+        styleN: 256,
         dofft: true,    // TODO
     }, 
     mounted: function () {
-        // prepare renderer
-        for(let i=0;i<4;i++){
-            let cv = document.getElementById('cv'+i);
+        function createContext(app, id) {
+            var cv = document.getElementById(id);
             cv.width  = N;
             cv.height = N;
-            cv.style.width  = this.styleN;
-            cv.style.height = this.styleN;
-            ctx.push(cv.getContext('2d'));
+            cv.style.width  = app.styleN;
+            cv.style.height = app.styleN;
+            return cv.getContext('2d');
         }
+        // prepare renderer
+        for(let i=0;i<4;i++){
+            ctx.push(createContext(this, 'cv'+i));
+        }
+        ctxWave = createContext(this, 'cv-wave');
 
         this.loadImage();
     },
@@ -154,7 +161,6 @@ const app = new Vue({
             // render to canvas
             render(mfscv[0], tex[0], texMinMax[0], null, ctx[0]);
 
-
             // phase 1
             // forward Fourier transform
             for(let m=2;m<=N;m*=2){
@@ -164,7 +170,6 @@ const app = new Vue({
             }
             // render to canvas
             render(mfscv[1], tex[1][0], null, null, ctx[1]);
-
 
             this.dofft = true;
             this.uniforms.b_type.value = 3; // clear mask
@@ -184,15 +189,15 @@ const app = new Vue({
                 if(flag){
                     this.uniforms.b_type.value = 1;
                 }
-
                 // phase 2
                 // merge drawings
                 render(mfs[2], tex[1][0], texd[0], tex[3][0], null);
                 // render to canvas
                 render(mfscv[2], tex[1][0], texd[0], null, ctx[2]);
             }
-
-
+            // Wave
+            uniforms.itr.value = N;
+            render(mfsWave, tex[1][0], null, null, ctxWave);
             // phase 3
             // backward Fourier transform
             if(this.dofft){
@@ -214,7 +219,6 @@ const app = new Vue({
 
                 this.dofft = false;
             }
-
         },
         mouseDown: function(e) {
             this.uniforms.b_active.value = 1;
@@ -248,10 +252,13 @@ const app = new Vue({
             this.uniforms.b_t.value.x = this.uniforms.b_xy.value.x;
             this.uniforms.b_t.value.y = this.uniforms.b_xy.value.y;
 
+            this.uniforms.mouse.value.x = Math.floor(e.offsetX/this.styleN*this.N);
+            this.uniforms.mouse.value.y = Math.floor((1.0-e.offsetY/this.styleN)*this.N);
+
             if(this.uniforms.b_active.value){
                 this.dofft = true;
-                window.requestAnimationFrame(this.animation);
             }
+            window.requestAnimationFrame(this.animation);
         },
         clear: function() {
             this.uniforms.b_type.value = 3;
@@ -260,7 +267,7 @@ const app = new Vue({
         wheel: function(e) {
             e.preventDefault();
             let b_r = this.uniforms.b_r.value;
-            let step = Math.round(Math.log2(b_r+1));
+            let step = Math.floor(Math.log2(b_r+1));
             b_r += e.deltaY > 0 ? step : -step;
             this.uniforms.b_r.value = Math.min(Math.max(b_r, 1), this.N);
         },
