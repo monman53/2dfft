@@ -10,13 +10,10 @@ const context = canvas.getContext('webgl2', {alpha: false});
 const renderer = new THREE.WebGLRenderer({canvas: canvas, context: context});
 renderer.setSize(N, N);
 renderer.autoClear = false;
-
 const scene    = new THREE.Scene();
 const camera   = new THREE.OrthographicCamera(-0.5, 0.5, 0.5, -0.5, -1, 1);
-
 camera.position.z = 1;
 scene.add(camera)
-
 const plane = new THREE.PlaneGeometry(1.0, 1.0);
 const mesh  = new THREE.Mesh(plane);
 scene.add(mesh);
@@ -92,6 +89,7 @@ for(const name of smNames) {
 }
 
 
+// canvas contexts
 let ctx = {};
 let ctxNames = [
     'result',
@@ -229,7 +227,7 @@ const app = new Vue({
                 for(let m=2;m<=N;m*=2){
                     uniforms.itr.value = m;
                     render(sm['minmax'], tex.minmax[0], null, tex.minmax[1], null);
-                    tex.minmax = [tex.minmax[1], tex.minmax[0]]; // swap
+                    tex.minmax.reverse(); // swap
                 }
                 render(sm['original-cv'], tex.original, tex.minmax[0], null, ctx.original);
 
@@ -237,11 +235,9 @@ const app = new Vue({
                 for(let m=2;m<=N;m*=2){
                     uniforms.itr.value = m;
                     render(sm['fft'], tex.fft[0], null, tex.fft[1], null);
-                    tex.fft = [tex.fft[1], tex.fft[0]];    // swap
+                    tex.fft.reverse();    // swap
                 }
                 render(sm['spectral-cv'], tex.fft[0], null, null, ctx.spectral);
-
-                //this.loadMask(this.masks[0]);
             }
 
             if(this.flag.mask){
@@ -263,14 +259,14 @@ const app = new Vue({
                 for(let m=2;m<=N;m*=2){
                     uniforms.itr.value = m;
                     render(sm['ifft'], tex.ifft[0], null, tex.ifft[1], null);
-                    tex.ifft = [tex.ifft[1], tex.ifft[0]]; // swap
+                    tex.ifft.reverse(); // swap
                 }
                 // find min max
                 render(sm['copy'], tex.ifft[0], null, tex.minmax[0], null);
                 for(let m=2;m<=N;m*=2){
                     uniforms.itr.value = m;
                     render(sm['minmax'], tex.minmax[0], null, tex.minmax[1], null);
-                    tex.minmax = [tex.minmax[1], tex.minmax[0]]; // swap
+                    tex.minmax.reverse(); // swap
                 }
                 render(sm['result-cv'], tex.ifft[0], tex.minmax[0], null, ctx.result);
             }
