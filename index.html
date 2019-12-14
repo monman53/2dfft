@@ -29,7 +29,7 @@ svg {
 <div class='app'>
     <h1>2D Inverse Fourier Transform Playground</h1>
     Inspired by <a href='http://ohzawa-lab.bpe.es.osaka-u.ac.jp/izumi/'>Prof. Ohzawa</a>'s lecture. 
-    <a href='https://www.youtube.com/watch?v=pCVdNYvORVw'>video</a>
+    <a href='https://www.youtube.com/watch?v=pCVdNYvORVw'>→video</a>
     <div class='wrapper-large'>
         <div>
             <h2>Original</h2>
@@ -62,7 +62,7 @@ svg {
             </div>
         </div>
         <div>
-            <h2>Power spectral</h2>
+            <h2>Spectral</h2>
             <div style='position: relative;'>
                 <canvas id='cv1'
                     @mousemove='mouseMove'
@@ -84,9 +84,10 @@ svg {
             </div>
         </div>
         <div>
-                Image URL: 
-                <input v-model='imageURL' size='10' @keyup.enter='loadImage(imageURL)'> 
-                <button @click='loadImage(imageURL)'>Update</button><br>
+            <!-- <h2>Image selector</h2> -->
+            Image URL: 
+            <input v-model='imageURL' size='10' @keyup.enter='loadImage(imageURL)'> 
+            <button @click='loadImage(imageURL)'>Load</button><br>
             <br>
             <div class='wrapper-small' :style='{width: styleN}'>
                 <div v-for='image in images' @click='loadImage(image)'>
@@ -95,7 +96,7 @@ svg {
             </div>
         </div>
         <div>
-            <h2>Wave</h2>
+            <!-- <h2>Wave</h2> -->
             <canvas id='cv-wave'></canvas>
         </div>
         <div>

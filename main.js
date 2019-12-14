@@ -136,13 +136,23 @@ const app = new Vue({
         this.loadImage(this.images[0]);
     },
     methods: {
-        loadImage: function(image) {
-            this.imageURL = image;  // TODO
+        loadImage: function(imageURL) {
+            this.imageURL = imageURL;  // TODO
             var loader = new THREE.TextureLoader();
+            var app = this;
+            let onLoad = function(texture) {
+                texture.magFilter = THREE.NearestFilter;
+                texture.minFilter = THREE.NearestFilter;
+                tex[0].texture = texture;
+                if(app.images.indexOf(imageURL) < 0){
+                    app.images.push(imageURL);
+                }
+                app.init();
+            }
             loader.load(
-                image,
+                imageURL,
                 // onLoad callback
-                this.init,
+                onLoad,
                 // onProgress callback currently not supported
                 undefined,
                 // onError callback
@@ -152,10 +162,6 @@ const app = new Vue({
             );
         },
         init: function(texture) {
-            texture.magFilter = THREE.NearestFilter;
-            texture.minFilter = THREE.NearestFilter;
-            tex[0].texture = texture;
-
             // phase 0
             // render to tex[1][0];
             render(mfs[0], tex[0], null, tex[1][0], null);
