@@ -1,6 +1,6 @@
 'use strict';
 
-const N = 1 << 3;   // image size (width and height), must be 2^n
+const N = 1 << 8;   // image size (width and height), must be 2^n
 
 let ctx      = [];  // canvas contexts
 let ctxWave;
@@ -68,7 +68,7 @@ const uniforms = {
     b_type:     {type: 'i',  value: 1},
     b_shape:    {type: 'i',  calue: 0},
     b_r:        {type: 'f',  value: 1},
-    b_v:        {type: 'f',  value: 0.0},
+    b_v:        {type: 'f',  value: 1.0},
     mouse:      {type: 'iv2', value: new THREE.Vector2(0, 0)},
 };
 for(let i=0;i<4;i++){
@@ -107,7 +107,7 @@ const app = new Vue({
         imageURL: 'image/lena.png',
         uniforms: uniforms,
         N: N,
-        styleN: 256,
+        styleN: 400,
         dofft: true,    // TODO
     }, 
     mounted: function () {
@@ -224,13 +224,13 @@ const app = new Vue({
             this.uniforms.b_active.value = 1;
             switch(e.button) {
                 case 0:
-                    this.uniforms.b_type.value = 2;
-                    break;
-                case 2:
                     this.uniforms.b_type.value = 1;
                     break;
-                default:
+                case 2:
                     this.uniforms.b_type.value = 2;
+                    break;
+                default:
+                    this.uniforms.b_type.value = 1;
             }
             this.uniforms.b_xy.value.x =     e.offsetX/this.styleN;
             this.uniforms.b_xy.value.y = 1.0-e.offsetY/this.styleN;
