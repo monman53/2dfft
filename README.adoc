@@ -4,3 +4,6 @@ Visit https://monman53.github.io/demos/2dfft/
 
 
 This work is inspired by link:http://ohzawa-lab.bpe.es.osaka-u.ac.jp/izumi/[Prof. Ohzawa]'s lecture. link:https://www.youtube.com/watch?v=pCVdNYvORVw[→video]
+
+
+image:./screenshot.png[Screenshot, link=https://monman53.github.io/demos/2dfft/]
