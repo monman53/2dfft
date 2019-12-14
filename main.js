@@ -109,6 +109,14 @@ const app = new Vue({
         N: N,
         styleN: 400,
         dofft: true,    // TODO
+        images: [
+            'image/lena.png',
+            'image/goldhill.png',
+            'image/boat.png',
+            'image/baboon.png',
+            'image/fruits.png',
+            'image/airplane.png',
+        ],
     }, 
     mounted: function () {
         function createContext(app, id) {
@@ -125,13 +133,14 @@ const app = new Vue({
         }
         ctxWave = createContext(this, 'cv-wave');
 
-        this.loadImage();
+        this.loadImage(this.images[0]);
     },
     methods: {
-        loadImage: function() {
+        loadImage: function(image) {
+            this.imageURL = image;  // TODO
             var loader = new THREE.TextureLoader();
             loader.load(
-                this.imageURL,
+                image,
                 // onLoad callback
                 this.init,
                 // onProgress callback currently not supported

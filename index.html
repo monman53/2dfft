@@ -8,11 +8,15 @@
 <!-- <script src='three.js'></script> -->
 
 <style>
-.wrapper {
+.wrapper-large {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    /* grid-gap: 10px; */
-    /* grid-auto-rows: minmax(100px, auto); */
+    grid-gap: 10px
+}
+.wrapper-small {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-gap: 10px
 }
 svg {
     position: absolute;
@@ -26,28 +30,14 @@ svg {
     <h1>2D Inverse Fourier Transform Playground</h1>
     Inspired by <a href='http://ohzawa-lab.bpe.es.osaka-u.ac.jp/izumi/'>Prof. Ohzawa</a>'s lecture. 
     <a href='https://www.youtube.com/watch?v=pCVdNYvORVw'>video</a>
-    <div class='wrapper'>
+    <div class='wrapper-large'>
         <div>
-            <h2>Power spectral</h2>
-            <div style='position: relative;'>
-                <canvas id='cv1'
-                    @mousemove='mouseMove'
-                    @mousedown='mouseDown'
-                    @mouseup='mouseUp'
-                    @wheel='wheel'
-                    style='cursor: crosshair;'
-                    oncontextmenu='return false'
-                ></canvas>
-                <svg :width='styleN' :height='styleN'>
-                    <circle
-                        :cx='uniforms.b_xy.value.x*styleN'
-                        :cy='(1.0-uniforms.b_xy.value.y)*styleN'
-                        :r='uniforms.b_r.value/2*styleN/N'
-                        stroke='red'
-                        fill='none'
-                        stroke-width='2'/>
-                </svg>
-            </div>
+            <h2>Original</h2>
+            <canvas id='cv0'></canvas>
+        </div>
+        <div>
+            <h2>Result</h2>
+            <canvas id='cv3'></canvas>
         </div>
         <div>
             <h2>Masked spectral</h2>
@@ -72,14 +62,42 @@ svg {
             </div>
         </div>
         <div>
-            <h2>Result</h2>
-            <canvas id='cv3'></canvas>
+            <h2>Power spectral</h2>
+            <div style='position: relative;'>
+                <canvas id='cv1'
+                    @mousemove='mouseMove'
+                    @mousedown='mouseDown'
+                    @mouseup='mouseUp'
+                    @wheel='wheel'
+                    style='cursor: crosshair;'
+                    oncontextmenu='return false'
+                ></canvas>
+                <svg :width='styleN' :height='styleN'>
+                    <circle
+                        :cx='uniforms.b_xy.value.x*styleN'
+                        :cy='(1.0-uniforms.b_xy.value.y)*styleN'
+                        :r='uniforms.b_r.value/2*styleN/N'
+                        stroke='red'
+                        fill='none'
+                        stroke-width='2'/>
+                </svg>
+            </div>
         </div>
         <div>
-            <h2>Original</h2>
-            <canvas id='cv0'></canvas>
+                Image URL: 
+                <input v-model='imageURL' size='10' @keyup.enter='loadImage(imageURL)'> 
+                <button @click='loadImage(imageURL)'>Update</button><br>
+            <br>
+            <div class='wrapper-small' :style='{width: styleN}'>
+                <div v-for='image in images' @click='loadImage(image)'>
+                    <img :src='image' width='100%' style='filter: grayscale(1.0); cursor: pointer;'/>
+                </div>
+            </div>
         </div>
-        <div></div>
+        <div>
+            <h2>Wave</h2>
+            <canvas id='cv-wave'></canvas>
+        </div>
         <div>
             <button @click='clear'>Reset</button><br>
             <input type='range' min='1' :max='N' step='1' v-model:number='uniforms.b_r.value'></input>
@@ -87,15 +105,7 @@ svg {
             <input type='range' min='0.0' max='1.0' step='0.01' v-model:number='uniforms.b_v.value'></input>
             Mask value: {{uniforms.b_v.value}}<br>
         </div>
-        <div>
-            <h2>Wave</h2>
-            <canvas id='cv-wave'></canvas>
-        </div>
-        <div>
-            image URL: 
-            <input v-model='imageURL'> 
-            <button v-on:click='loadImage'>Update</button><br>
-        </div>
+        <div></div>
 
     </div>
     <!-- uniforms.b_active: {{uniforms.b_active}}<br> -->
