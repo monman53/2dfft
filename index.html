@@ -143,7 +143,7 @@ svg {
     }
 </script>
 
-<script type='x-shader/x-fragment' id='fsh'>
+<script type='x-shader/x-fragment' id='fs-header'>
     #version 300 es
     precision highp float;
     precision highp int;
@@ -266,18 +266,6 @@ svg {
     }
 </script>
 
-<script type='x-shader/x-fragment' id='fs-result'>
-    void main() {
-        float gray = texture(ta, gl_FragCoord.xy*d).x;
-        float mmin = texture(tb, gl_FragCoord.xy*d).x;
-        float mmax = texture(tb, gl_FragCoord.xy*d).z;
-        fragColor = vec4((gray-mmin)/(mmax-mmin));
-        if(mmin == mmax){
-            fragColor = vec4(0.5);
-        }
-    }
-</script>
-
 <script type='x-shader/x-fragment' id='fs-draw'>
     void main() {
         fragColor.x = texture(ta, gl_FragCoord.xy*d).x;
@@ -293,14 +281,6 @@ svg {
         switch(b_type){
             case 3: fragColor.x = 0.0; break;
         }
-    }
-</script>
-
-<script type='x-shader/x-fragment' id='fs-gray'>
-    void main() {
-        vec4 c = texture(ta, pf*d);
-        float gray = (c.r + c.g + c.b)/3.0;
-        fragColor = vec4(gray/float(N));
     }
 </script>
 
@@ -353,6 +333,18 @@ svg {
 }
 </script>
 
+<script type='x-shader/x-fragment' id='fs-result-cv'>
+    void main() {
+        float gray = texture(ta, gl_FragCoord.xy*d).x;
+        float mmin = texture(tb, gl_FragCoord.xy*d).x;
+        float mmax = texture(tb, gl_FragCoord.xy*d).z;
+        fragColor = vec4((gray-mmin)/(mmax-mmin));
+        if(mmin == mmax){
+            fragColor = vec4(0.5);
+        }
+    }
+</script>
+
 <script type='x-shader/x-fragment' id='fs-wave'>
     void main() {
         uint n = uint(N);
@@ -362,6 +354,20 @@ svg {
         uvec2 mouse = uvec2(shift(b_xy*float(N)));
         vec2 v = mul(iw(pi.x*mouse.x+pi.y*mouse.y), F);
         fragColor = vec4(v.r*0.5+0.5);
+    }
+</script>
+
+<script type='x-shader/x-fragment' id='fs-gray'>
+    void main() {
+        vec4 c = texture(ta, pf*d);
+        float gray = (c.r + c.g + c.b)/3.0;
+        fragColor = vec4(gray/float(N));
+    }
+</script>
+
+<script type='x-shader/x-fragment' id='fs-copy'>
+    void main() {
+        fragColor = texture(ta, gl_FragCoord.xy*d);
     }
 </script>
 
