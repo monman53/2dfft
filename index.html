@@ -24,6 +24,10 @@ svg {
     left: 0;
     pointer-events: none;
 }
+img, 
+canvas {
+    border: solid 1px black;
+}
 </style>
 
 <div class='app'>
@@ -40,7 +44,7 @@ svg {
             <canvas id='cv-result'></canvas>
         </div>
         <div>
-            <h2>Masked spectral</h2>
+            <h2>Masked spectrum</h2>
             <div style='position: relative;'>
                 <canvas id='cv-masked'
                     @mousemove='mouseMove'
@@ -62,7 +66,7 @@ svg {
             </div>
         </div>
         <div>
-            <h2>Spectral</h2>
+            <h2>Spectrum</h2>
             <div style='position: relative;'>
                 <canvas id='cv-spectral'
                     @mousemove='mouseMove'
@@ -84,7 +88,6 @@ svg {
             </div>
         </div>
         <div>
-            <!-- <h2>Image selector</h2> -->
             Image URL: 
             <input v-model='imageURL' size='10' @keyup.enter='loadImage(imageURL)'> 
             <button @click='loadImage(imageURL)'>Load</button><br>
@@ -121,18 +124,18 @@ svg {
             </div>
         </div>
         <div>
-            <button @click='clear'>Reset</button><br>
-            <input type='range' min='1' :max='N' step='1' v-model:number='uniforms.b_r.value'></input>
-            Size: {{uniforms.b_r.value}}<br>
-            <input type='range' min='0.0' max='1.0' step='0.01' v-model:number='uniforms.b_v.value'></input>
-            Mask value: {{uniforms.b_v.value}}<br>
+            Mask URL: 
+            <input v-model='maskURL' size='10' @keyup.enter='loadMask(maskURL)'> 
+            <button @click='loadMask(maskURL)'>Load</button><br>
+            <br>
+            <div class='wrapper-small' :style='{width: styleN}'>
+                <div v-for='mask in masks' @click='loadMask(mask)'>
+                    <img :src='mask' width='100%' style='filter: grayscale(1.0); cursor: pointer;'/>
+                </div>
+            </div>
         </div>
 
     </div>
-    <!-- uniforms.b_active: {{uniforms.b_active}}<br> -->
-    <!-- uniforms.b_type: {{uniforms.b_type}}<br> -->
-    <!-- uniforms.b_xy: {{uniforms.b_xy}}<br> -->
-    <!-- uniforms.mouse: {{uniforms.mouse}}<br> -->
 </div>
 
 
@@ -359,9 +362,9 @@ svg {
 
 <script type='x-shader/x-fragment' id='fs-gray'>
     void main() {
-        vec4 c = texture(ta, pf*d);
+        vec4 c = texture(ta, gl_FragCoord.xy*d);
         float gray = (c.r + c.g + c.b)/3.0;
-        fragColor = vec4(gray/float(N));
+        fragColor = vec4(gray);
     }
 </script>
 

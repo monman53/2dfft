@@ -42,6 +42,7 @@ for(const name of texNames){
     ];
 }
 tex['original'] = new THREE.WebGLRenderTarget(N, N, options);
+tex['mask']     = new THREE.WebGLRenderTarget(N, N, options);
 
 
 // shader materials
@@ -76,7 +77,6 @@ const uniforms = {
     b_shape:    {type: 'i',  calue: 0},
     b_r:        {type: 'f',  value: 1},
     b_v:        {type: 'f',  value: 1.0},
-    mouse:      {type: 'iv2', value: new THREE.Vector2(0, 0)},
 };
 function createShaderMaterial(fsname) {
     return new THREE.ShaderMaterial({
@@ -117,10 +117,15 @@ const app = new Vue({
     el: '.app',
     data: {
         imageURL: 'image/lena.png',
+        maskURL:  '',
         uniforms: uniforms,
         N: N,
         styleN: styleN,
         dofft: true,    // TODO
+        flag: {
+            init: false, 
+            mask: false,
+        },
         images: [
             'image/lena.png',
             'image/goldhill.png',
@@ -128,6 +133,15 @@ const app = new Vue({
             'image/baboon.png',
             'image/fruits.png',
             'image/airplane.png',
+            'image/2x2spot.png',
+            'image/8x8spot.png',
+        ],
+        masks: [
+            'mask/fill.png',
+            'mask/clear.png',
+            'mask/highpass_square.png',
+            'mask/lowpass_square.png',
+            'mask/bandpass_square.png',
         ],
     }, 
     mounted: function () {
@@ -171,61 +185,81 @@ const app = new Vue({
                 }
             );
         },
-        init: function() {
-            // Original
-            render(sm['original'], tex.original, null, tex.fft[0], null);
-            // find min max
-            render(sm['copy'], tex.fft[0], null, tex.minmax[0], null);
-            for(let m=2;m<=N;m*=2){
-                uniforms.itr.value = m;
-                render(sm['minmax'], tex.minmax[0], null, tex.minmax[1], null);
-                tex.minmax = [tex.minmax[1], tex.minmax[0]]; // swap
+        loadMask: function(maskURL) {
+            this.maskURL = maskURL;  // TODO
+            var loader = new THREE.TextureLoader();
+            var app = this;
+            let onLoad = function(texture) {
+                texture.magFilter = THREE.NearestFilter;
+                texture.minFilter = THREE.NearestFilter;
+                tex.mask.texture = texture;
+                render(sm['gray'], tex.mask, null, tex.draw[0], null);
+                if(app.masks.indexOf(maskURL) < 0){
+                    app.masks.push(maskURL);
+                }
+                app.flag.mask = true;
+                window.requestAnimationFrame(app.pipeline);
             }
-            render(sm['original-cv'], tex.original, tex.minmax[0], null, ctx.original);
-
-
-            // FFT
-            for(let m=2;m<=N;m*=2){
-                uniforms.itr.value = m;
-                render(sm['fft'], tex.fft[0], null, tex.fft[1], null);
-                tex.fft = [tex.fft[1], tex.fft[0]];    // swap
-            }
-            render(sm['spectral-cv'], tex.fft[0], null, null, ctx.spectral);
-
-
-            this.dofft = true;
-            this.uniforms.b_type.value = 3; // clear mask
-
-            window.requestAnimationFrame(this.animation);
+            loader.load(
+                maskURL,
+                // onLoad callback
+                onLoad,
+                // onProgress callback currently not supported
+                undefined,
+                // onError callback
+                function() {
+                    console.error('Load Error');
+                }
+            );
         },
-        animation: function() {
-            let flag = false;
-            if(this.uniforms.b_type.value == 3){
-                this.dofft = true;
-                flag = true;
+        init: function() {
+            this.flag.init = true;
+            this.flag.mask = true;
+            window.requestAnimationFrame(this.pipeline);
+        },
+        pipeline: function() {
+            if(this.flag.init) {
+                this.flag.init = false;
+
+                // Original
+                render(sm['original'], tex.original, null, tex.fft[0], null);
+
+                // find min max
+                render(sm['copy'], tex.fft[0], null, tex.minmax[0], null);
+                for(let m=2;m<=N;m*=2){
+                    uniforms.itr.value = m;
+                    render(sm['minmax'], tex.minmax[0], null, tex.minmax[1], null);
+                    tex.minmax = [tex.minmax[1], tex.minmax[0]]; // swap
+                }
+                render(sm['original-cv'], tex.original, tex.minmax[0], null, ctx.original);
+
+                // FFT
+                for(let m=2;m<=N;m*=2){
+                    uniforms.itr.value = m;
+                    render(sm['fft'], tex.fft[0], null, tex.fft[1], null);
+                    tex.fft = [tex.fft[1], tex.fft[0]];    // swap
+                }
+                render(sm['spectral-cv'], tex.fft[0], null, null, ctx.spectral);
+
+                //this.loadMask(this.masks[0]);
             }
-            if(flag || this.uniforms.b_active){
+
+            if(this.flag.mask){
+                this.flag.mask = false;
+
                 // Draw
                 render(sm['draw'], tex.draw[0], null, tex.draw[1], null);
                 tex.draw = [tex.draw[1], tex.draw[0]];
-                if(flag){
-                    this.uniforms.b_type.value = 1;
-                }
+
+                // Mask
+                render(sm['mask-cv'], tex.draw[0], null, null, ctx.mask);
 
                 // Masked
                 render(sm['masked'], tex.fft[0], tex.draw[0], tex.ifft[0], null);
                 render(sm['masked-cv'], tex.fft[0], tex.draw[0], null, ctx.masked);
 
-                // Mask
-                render(sm['mask-cv'], tex.draw[0], null, null, ctx.mask);
-            }
 
-            // Wave
-            uniforms.itr.value = N;
-            render(sm['wave'], tex.fft[0], null, null, ctx.wave);
-
-            // IFFT
-            if(this.dofft){
+                // IFFT
                 for(let m=2;m<=N;m*=2){
                     uniforms.itr.value = m;
                     render(sm['ifft'], tex.ifft[0], null, tex.ifft[1], null);
@@ -239,9 +273,11 @@ const app = new Vue({
                     tex.minmax = [tex.minmax[1], tex.minmax[0]]; // swap
                 }
                 render(sm['result-cv'], tex.ifft[0], tex.minmax[0], null, ctx.result);
-
-                this.dofft = false;
             }
+
+            // Wave
+            uniforms.itr.value = N;
+            render(sm['wave'], tex.fft[0], null, null, ctx.wave);
         },
         mouseDown: function(e) {
             this.uniforms.b_active.value = 1;
@@ -261,8 +297,8 @@ const app = new Vue({
             this.uniforms.b_s.value.y = this.uniforms.b_xy.value.y;
             this.uniforms.b_t.value.x = this.uniforms.b_xy.value.x;
             this.uniforms.b_t.value.y = this.uniforms.b_xy.value.y;
-            this.dofft = true;
-            window.requestAnimationFrame(this.animation);
+            this.flag.mask = true;
+            window.requestAnimationFrame(this.pipeline);
         },
         mouseUp: function() {
             this.uniforms.b_active.value = 0;
@@ -275,17 +311,10 @@ const app = new Vue({
             this.uniforms.b_t.value.x = this.uniforms.b_xy.value.x;
             this.uniforms.b_t.value.y = this.uniforms.b_xy.value.y;
 
-            this.uniforms.mouse.value.x = Math.floor(e.offsetX/this.styleN*this.N);
-            this.uniforms.mouse.value.y = Math.floor((1.0-e.offsetY/this.styleN)*this.N);
-
             if(this.uniforms.b_active.value){
-                this.dofft = true;
+                this.flag.mask = true;
             }
-            window.requestAnimationFrame(this.animation);
-        },
-        clear: function() {
-            this.uniforms.b_type.value = 3;
-            window.requestAnimationFrame(this.animation);
+            window.requestAnimationFrame(this.pipeline);
         },
         wheel: function(e) {
             e.preventDefault();
