@@ -33,16 +33,16 @@ svg {
     <div class='wrapper-large'>
         <div>
             <h2>Original</h2>
-            <canvas id='cv0'></canvas>
+            <canvas id='cv-original'></canvas>
         </div>
         <div>
             <h2>Result</h2>
-            <canvas id='cv3'></canvas>
+            <canvas id='cv-result'></canvas>
         </div>
         <div>
             <h2>Masked spectral</h2>
             <div style='position: relative;'>
-                <canvas id='cv2'
+                <canvas id='cv-masked'
                     @mousemove='mouseMove'
                     @mousedown='mouseDown'
                     @mouseup='mouseUp'
@@ -64,7 +64,7 @@ svg {
         <div>
             <h2>Spectral</h2>
             <div style='position: relative;'>
-                <canvas id='cv1'
+                <canvas id='cv-spectral'
                     @mousemove='mouseMove'
                     @mousedown='mouseDown'
                     @mouseup='mouseUp'
@@ -198,7 +198,16 @@ svg {
     }
 </script>
 
-<script type='x-shader/x-fragment' id='fscv0'>
+<script type='x-shader/x-fragment' id='fs-original'>
+    void main() {
+        vec2 pf = reverse(gl_FragCoord.xy);
+        vec4 c = texture(ta, pf*d);
+        float gray = (c.r + c.g + c.b)/3.0;
+        fragColor = vec4(gray/float(N), 0.0, gray/float(N), 0.0);
+    }
+</script>
+
+<script type='x-shader/x-fragment' id='fs-original-cv'>
     void main() {
         vec4 c = texture(ta, gl_FragCoord.xy*d);
         float mmin = texture(tb, gl_FragCoord.xy*d).x*float(N);
@@ -211,7 +220,29 @@ svg {
     }
 </script>
 
-<script type='x-shader/x-fragment' id='fscv1'>
+<script type='x-shader/x-fragment' id='fs-fft'>
+    void main() {
+        uint n = uint(N);
+        uint m = uint(itr);
+        uvec2 pi = uvec2(gl_FragCoord.xy);
+        uvec2 pio = pi&~(m>>1);
+    
+        vec2 v0 = texture(ta, vec2(pio                  )*d).xy;
+        vec2 v1 = texture(ta, vec2(pio+uvec2(m>>1, 0u  ))*d).xy;
+        vec2 v2 = texture(ta, vec2(pio+uvec2(0u,   m>>1))*d).xy;
+        vec2 v3 = texture(ta, vec2(pio+uvec2(m>>1, m>>1))*d).xy;
+    
+        //v0 = mul(v0, w(0u       ));
+        v1 = mul(v1, w(pi.x     ));
+        v2 = mul(v2, w(pi.y     ));
+        v3 = mul(v3, w(pi.x+pi.y));
+
+        vec2 res = v0+v1+v2+v3;
+        fragColor = vec4(res, 0.0, 0.0);
+    }
+</script>
+
+<script type='x-shader/x-fragment' id='fs-spectral-cv'>
     void main() {
         vec2 pf = shift(gl_FragCoord.xy);
         float F = log(length(texture(ta, pf*d).rg*float(N)))/8.0; // TODO 8 is magick number
@@ -219,7 +250,14 @@ svg {
     }
 </script>
 
-<script type='x-shader/x-fragment' id='fscv2'>
+<script type='x-shader/x-fragment' id='fs-mask-cv'>
+    void main() {
+        float mask = texture(ta, gl_FragCoord.xy*d).r;
+        fragColor = vec4(mask);
+    }
+</script>
+
+<script type='x-shader/x-fragment' id='fs-masked-cv'>
     void main() {
         vec2 pf = shift(gl_FragCoord.xy);
         float F = log(length(texture(ta, pf*d).rg*float(N)))/8.0; // TODO 8 is magick number
@@ -228,7 +266,7 @@ svg {
     }
 </script>
 
-<script type='x-shader/x-fragment' id='fscv3'>
+<script type='x-shader/x-fragment' id='fs-result'>
     void main() {
         float gray = texture(ta, gl_FragCoord.xy*d).x;
         float mmin = texture(tb, gl_FragCoord.xy*d).x;
@@ -258,13 +296,6 @@ svg {
     }
 </script>
 
-<script type='x-shader/x-fragment' id='fs-mask'>
-    void main() {
-        float mask = texture(ta, gl_FragCoord.xy*d).r;
-        fragColor = vec4(mask);
-    }
-</script>
-
 <script type='x-shader/x-fragment' id='fs-gray'>
     void main() {
         vec4 c = texture(ta, pf*d);
@@ -273,38 +304,7 @@ svg {
     }
 </script>
 
-<script type='x-shader/x-fragment' id='fs0'>
-    void main() {
-        vec2 pf = reverse(gl_FragCoord.xy);
-        vec4 c = texture(ta, pf*d);
-        float gray = (c.r + c.g + c.b)/3.0;
-        fragColor = vec4(gray/float(N), 0.0, gray/float(N), 0.0);
-    }
-</script>
-
-<script type='x-shader/x-fragment' id='fs1'>
-    void main() {
-        uint n = uint(N);
-        uint m = uint(itr);
-        uvec2 pi = uvec2(gl_FragCoord.xy);
-        uvec2 pio = pi&~(m>>1);
-    
-        vec2 v0 = texture(ta, vec2(pio                  )*d).xy;
-        vec2 v1 = texture(ta, vec2(pio+uvec2(m>>1, 0u  ))*d).xy;
-        vec2 v2 = texture(ta, vec2(pio+uvec2(0u,   m>>1))*d).xy;
-        vec2 v3 = texture(ta, vec2(pio+uvec2(m>>1, m>>1))*d).xy;
-    
-        //v0 = mul(v0, w(0u       ));
-        v1 = mul(v1, w(pi.x     ));
-        v2 = mul(v2, w(pi.y     ));
-        v3 = mul(v3, w(pi.x+pi.y));
-
-        vec2 res = v0+v1+v2+v3;
-        fragColor = vec4(res, 0.0, 0.0);
-    }
-</script>
-
-<script type='x-shader/x-fragment' id='fs2'>
+<script type='x-shader/x-fragment' id='fs-masked'>
     void main() {
         vec2 pf = reverse(gl_FragCoord.xy);
         vec2 mpf = shift(pf);
@@ -313,7 +313,7 @@ svg {
     }
 </script>
 
-<script type='x-shader/x-fragment' id='fs3'>
+<script type='x-shader/x-fragment' id='fs-ifft'>
     void main() {
         uint n = uint(N);
         uint m = uint(itr);

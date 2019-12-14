@@ -16,22 +16,16 @@ const options = {
     magFilter: THREE.NearestFilter,
     minFilter: THREE.NearestFilter,
 };
-let tex      = [];  // textures
-// tex[0]
-tex.push(new THREE.WebGLRenderTarget(N, N, options));
-// tex[1]
-tex.push([
+let texOriginal = new THREE.WebGLRenderTarget(N, N, options)
+let texFFT = [
     new THREE.WebGLRenderTarget(N, N, options),
     new THREE.WebGLRenderTarget(N, N, options),
-]);
-// tex[2]
-tex.push(new THREE.WebGLRenderTarget(N, N, options));
-// tex[3]
-tex.push([
+];
+let texIFFT = [
     new THREE.WebGLRenderTarget(N, N, options),
     new THREE.WebGLRenderTarget(N, N, options),
-]);
-let texDraw   = [
+];
+let texDraw = [
     new THREE.WebGLRenderTarget(N, N, options),
     new THREE.WebGLRenderTarget(N, N, options),
 ];
@@ -68,15 +62,20 @@ const uniforms = {
 };
 let mfscv    = [];  // ShaderMaterial for canvas
 let mfs      = [];  // ShaderMaterial for texture
-for(let i=0;i<4;i++){
-    mfscv.push(createShaderMaterial('fscv'+i, uniforms));
-    mfs.push(createShaderMaterial('fs'+i, uniforms));
-}
-let mfsDraw   = createShaderMaterial('fs-draw', uniforms);
-let mfsGray   = createShaderMaterial('fs-gray', uniforms);
-let mfsMask   = createShaderMaterial('fs-mask', uniforms);
-let mfsMinMax = createShaderMaterial('fs-minmax', uniforms);
-let mfsWave   = createShaderMaterial('fs-wave', uniforms);
+
+let smOriginalCV    = createShaderMaterial('fs-original-cv',  uniforms);
+let smOriginal      = createShaderMaterial('fs-original',  uniforms);
+let smFFT           = createShaderMaterial('fs-fft',  uniforms);
+let smSpectralCV    = createShaderMaterial('fs-spectral-cv',  uniforms);
+let smMasked        = createShaderMaterial('fs-masked',    uniforms);
+let smMaskedCV      = createShaderMaterial('fs-masked-cv', uniforms);
+let smDraw          = createShaderMaterial('fs-draw',      uniforms);
+let smGray          = createShaderMaterial('fs-gray',      uniforms);
+let smMaskCV        = createShaderMaterial('fs-mask-cv',     uniforms);
+let smMinMax        = createShaderMaterial('fs-minmax',    uniforms);
+let smWave          = createShaderMaterial('fs-wave',      uniforms);
+let smResult        = createShaderMaterial('fs-result',    uniforms);
+let smIFFT          = createShaderMaterial('fs-ifft',      uniforms);
 
 
 const scene    = new THREE.Scene();
@@ -101,8 +100,12 @@ function render(material, texA, texB, target, ctx) {
 }
 
 let ctx      = [];  // canvas contexts
+let ctxResult;
 let ctxWave;
 let ctxMask;
+let ctxMasked;
+let ctxSpectral;
+let ctxOriginal;
 
 const app = new Vue({
     el: '.app',
@@ -131,11 +134,12 @@ const app = new Vue({
             return cv.getContext('2d');
         }
         // prepare renderer
-        for(let i=0;i<4;i++){
-            ctx.push(createContext(this, 'cv'+i));
-        }
-        ctxWave = createContext(this, 'cv-wave');
-        ctxMask = createContext(this, 'cv-mask');
+        ctxOriginal = createContext(this, 'cv-original');
+        ctxMasked   = createContext(this, 'cv-masked');
+        ctxResult   = createContext(this, 'cv-result');
+        ctxWave     = createContext(this, 'cv-wave');
+        ctxMask     = createContext(this, 'cv-mask');
+        ctxSpectral = createContext(this, 'cv-spectral');
 
         this.loadImage(this.images[0]);
     },
@@ -147,7 +151,7 @@ const app = new Vue({
             let onLoad = function(texture) {
                 texture.magFilter = THREE.NearestFilter;
                 texture.minFilter = THREE.NearestFilter;
-                tex[0].texture = texture;
+                texOriginal.texture = texture;
                 if(app.images.indexOf(imageURL) < 0){
                     app.images.push(imageURL);
                 }
@@ -165,30 +169,30 @@ const app = new Vue({
                 }
             );
         },
-        init: function(texture) {
+        init: function() {
             // phase 0
-            // render to tex[1][0];
-            render(mfs[0], tex[0], null, tex[1][0], null);
+            // render to texFFT[0];
+            render(smOriginal, texOriginal, null, texFFT[0], null);
             // find min max
             uniforms.itr.value = 2;
-            render(mfsMinMax, tex[1][0], null, texMinMax[0], null);
+            render(smMinMax, texFFT[0], null, texMinMax[0], null);
             for(let m=4;m<=N;m*=2){
                 uniforms.itr.value = m;
-                render(mfsMinMax, texMinMax[0], null, texMinMax[1], null);
+                render(smMinMax, texMinMax[0], null, texMinMax[1], null);
                 texMinMax = [texMinMax[1], texMinMax[0]]; // swap
             }
             // render to canvas
-            render(mfscv[0], tex[0], texMinMax[0], null, ctx[0]);
+            render(smOriginalCV, texOriginal, texMinMax[0], null, ctxOriginal);
 
             // phase 1
-            // forward Fourier transform
+            // FFT
             for(let m=2;m<=N;m*=2){
                 uniforms.itr.value = m;
-                render(mfs[1], tex[1][0], null, tex[1][1], null);
-                tex[1] = [tex[1][1], tex[1][0]];    // swap
+                render(smFFT, texFFT[0], null, texFFT[1], null);
+                texFFT = [texFFT[1], texFFT[0]];    // swap
             }
             // render to canvas
-            render(mfscv[1], tex[1][0], null, null, ctx[1]);
+            render(smSpectralCV, texFFT[0], null, null, ctxSpectral);
 
             this.dofft = true;
             this.uniforms.b_type.value = 3; // clear mask
@@ -203,40 +207,40 @@ const app = new Vue({
             }
             if(flag || this.uniforms.b_active){
                 // drawings
-                render(mfsDraw, texDraw[0], null, texDraw[1], null);
+                render(smDraw, texDraw[0], null, texDraw[1], null);
                 texDraw = [texDraw[1], texDraw[0]];
                 if(flag){
                     this.uniforms.b_type.value = 1;
                 }
                 // phase 2
                 // merge drawings
-                render(mfs[2], tex[1][0], texDraw[0], tex[3][0], null);
+                render(smMasked, texFFT[0], texDraw[0], texIFFT[0], null);
                 // render to canvas
-                render(mfscv[2], tex[1][0], texDraw[0], null, ctx[2]);
+                render(smMaskedCV, texFFT[0], texDraw[0], null, ctxMasked);
             }
             // Mask
-            render(mfsMask, texDraw[0], null, null, ctxMask);
+            render(smMaskCV, texDraw[0], null, null, ctxMask);
             // Wave
             uniforms.itr.value = N;
-            render(mfsWave, tex[1][0], null, null, ctxWave);
+            render(smWave, texFFT[0], null, null, ctxWave);
             // phase 3
-            // backward Fourier transform
+            // IFFT
             if(this.dofft){
                 for(let m=2;m<=N;m*=2){
                     uniforms.itr.value = m;
-                    render(mfs[3], tex[3][0], null, tex[3][1], null);
-                    tex[3] = [tex[3][1], tex[3][0]]; // swap
+                    render(smIFFT, texIFFT[0], null, texIFFT[1], null);
+                    texIFFT = [texIFFT[1], texIFFT[0]]; // swap
                 }
                 // find min max
                 uniforms.itr.value = 2;
-                render(mfsMinMax, tex[3][0], null, texMinMax[0], null);
+                render(smMinMax, texIFFT[0], null, texMinMax[0], null);
                 for(let m=4;m<=N;m*=2){
                     uniforms.itr.value = m;
-                    render(mfsMinMax, texMinMax[0], null, texMinMax[1], null);
+                    render(smMinMax, texMinMax[0], null, texMinMax[1], null);
                     texMinMax = [texMinMax[1], texMinMax[0]]; // swap
                 }
-                // render to canvas
-                render(mfscv[3], tex[3][0], texMinMax[0], null, ctx[3]);
+                // render result
+                render(smResult, texIFFT[0], texMinMax[0], null, ctxResult);
 
                 this.dofft = false;
             }
