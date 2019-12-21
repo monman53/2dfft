@@ -32,8 +32,6 @@ canvas {
 
 <div class='app'>
     <h1>2D Inverse Fourier Transform Playground</h1>
-    Inspired by <a href='http://ohzawa-lab.bpe.es.osaka-u.ac.jp/izumi/'>Prof. Ohzawa</a>'s lecture. 
-    <a href='https://www.youtube.com/watch?v=pCVdNYvORVw'>→video</a>
     <div class='wrapper-large'>
         <div>
             <h2>Original</h2>
@@ -89,12 +87,12 @@ canvas {
         </div>
         <div>
             Image URL: 
-            <input v-model='imageURL' size='10' @keyup.enter='loadImage(imageURL)'> 
-            <button @click='loadImage(imageURL)'>Load</button><br>
-            <br>
+            <input v-model='imageURL' size='10' @keyup.enter='loadImage(imageURL)' /><br>
+            or <input type='file' @change='loadLoaclImage' />
+            <br><br>
             <div class='wrapper-small' :style='{width: styleN}'>
                 <div v-for='image in images' @click='loadImage(image)'>
-                    <img :src='image' width='100%' style='filter: grayscale(1.0); cursor: pointer;'/>
+                    <img :src='image' width='100%' style='filter: grayscale(1.0); cursor: pointer;' />
                 </div>
             </div>
         </div>
@@ -125,9 +123,9 @@ canvas {
         </div>
         <div>
             Mask URL: 
-            <input v-model='maskURL' size='10' @keyup.enter='loadMask(maskURL)'> 
-            <button @click='loadMask(maskURL)'>Load</button><br>
-            <br>
+            <input v-model='maskURL' size='10' @keyup.enter='loadMask(maskURL)'><br>
+            or <input type='file' @change='loadLoaclMask' />
+            <br><br>
             <div class='wrapper-small' :style='{width: styleN}'>
                 <div v-for='mask in masks' @click='loadMask(mask)'>
                     <img :src='mask' width='100%' style='filter: grayscale(1.0); cursor: pointer;'/>
@@ -136,6 +134,8 @@ canvas {
         </div>
 
     </div>
+    Inspired by <a href='http://ohzawa-lab.bpe.es.osaka-u.ac.jp/izumi/'>Prof. Ohzawa</a>'s lecture. 
+    <a href='https://www.youtube.com/watch?v=pCVdNYvORVw'>→video</a>
 </div>
 
 
