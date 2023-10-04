@@ -8,85 +8,87 @@
 <!-- <script src='three.js'></script> -->
 
 <style>
-.wrapper-large {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    grid-gap: 10px
-}
-.wrapper-small {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    grid-gap: 10px
-}
-svg {
-    position: absolute;
-    top: 0;
-    left: 0;
-    pointer-events: none;
-}
-img, 
-canvas {
-    border: solid 1px black;
-}
+    .wrapper-large {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-gap: 10px
+    }
+
+    .wrapper-small {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-gap: 10px
+    }
+
+    svg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+    }
+
+    img,
+    canvas {
+        border: solid 1px black;
+    }
 </style>
 
 <div class='app'>
     <h1>2D Inverse Fourier Transform Playground</h1>
     <div class='wrapper-large'>
         <div>
-            <h2>Original</h2>
-            <canvas id='cv-original'></canvas>
+            <h2>Original image</h2>
+            Original image or the result of backward Fourier transform of forward Fourier transform (spectrum).
         </div>
         <div>
             <h2>Result</h2>
-            <canvas id='cv-result'></canvas>
+            <p>The result of backward (inverse) Fourier transform of masked spectrum.</p>
         </div>
         <div>
-            <h2>Masked spectrum</h2>
-            <div style='position: relative;'>
-                <canvas id='cv-masked'
-                    @mousemove='mouseMove'
-                    @mousedown='mouseDown'
-                    @mouseup='mouseUp'
-                    @wheel='wheel'
-                    style='cursor: crosshair;'
-                    oncontextmenu='return false'
-                ></canvas>
-                <svg :width='styleN' :height='styleN'>
-                    <circle
-                        :cx='uniforms.b_xy.value.x*styleN'
-                        :cy='(1.0-uniforms.b_xy.value.y)*styleN'
-                        :r='uniforms.b_r.value/2*styleN/N'
-                        stroke='red'
-                        fill='none'
-                        stroke-width='2'/>
-                </svg>
-            </div>
+            <h2>Masked spectrum (<span style="color: red">edit here!</span>)</h2>
+            <ul>
+                <li><b>Left-drag</b>: Scratch mask</li>
+                <li><b>Right-drag</b>: Restore mask</li>
+                <li><b>Wheel</b>: Change circle size</li>
+            </ul>
         </div>
         <div>
             <h2>Spectrum</h2>
+            <p>The result of forward Fourier transform of original imag. The actual values are complex numbers, but
+                <a href="https://en.wikipedia.org/wiki/Absolute_value#Complex_numbers">absolute values</a> are used here
+                for visualization.
+            </p>
+        </div>
+    </div>
+    <div class='wrapper-large'>
+        <div>
+            <canvas id='cv-original'></canvas>
+        </div>
+        <div>
+            <canvas id='cv-result'></canvas>
+        </div>
+        <div>
             <div style='position: relative;'>
-                <canvas id='cv-spectral'
-                    @mousemove='mouseMove'
-                    @mousedown='mouseDown'
-                    @mouseup='mouseUp'
-                    @wheel='wheel'
-                    style='cursor: crosshair;'
-                    oncontextmenu='return false'
-                ></canvas>
+                <canvas id='cv-masked' @mousemove='mouseMove' @mousedown='mouseDown' @mouseup='mouseUp' @wheel='wheel'
+                    style='cursor: crosshair;' oncontextmenu='return false'></canvas>
                 <svg :width='styleN' :height='styleN'>
-                    <circle
-                        :cx='uniforms.b_xy.value.x*styleN'
-                        :cy='(1.0-uniforms.b_xy.value.y)*styleN'
-                        :r='uniforms.b_r.value/2*styleN/N'
-                        stroke='red'
-                        fill='none'
-                        stroke-width='2'/>
+                    <circle :cx='uniforms.b_xy.value.x*styleN' :cy='(1.0-uniforms.b_xy.value.y)*styleN'
+                        :r='uniforms.b_r.value/2*styleN/N' stroke='red' fill='none' stroke-width='2' />
                 </svg>
             </div>
         </div>
         <div>
-            Image URL: 
+            <div style='position: relative;'>
+                <canvas id='cv-spectral' @mousemove='mouseMove' @mousedown='mouseDown' @mouseup='mouseUp' @wheel='wheel'
+                    style='cursor: crosshair;' oncontextmenu='return false'></canvas>
+                <svg :width='styleN' :height='styleN'>
+                    <circle :cx='uniforms.b_xy.value.x*styleN' :cy='(1.0-uniforms.b_xy.value.y)*styleN'
+                        :r='uniforms.b_r.value/2*styleN/N' stroke='red' fill='none' stroke-width='2' />
+                </svg>
+            </div>
+        </div>
+        <div>
+            Image URL:
             <input v-model='imageURL' size='10' @keyup.enter='loadImage(imageURL)' /><br>
             or <input type='file' @change='loadLoaclImage' />
             <br><br>
@@ -102,44 +104,93 @@ canvas {
         </div>
         <div>
             <div style='position: relative;'>
-                <canvas id='cv-mask'
-                    @mousemove='mouseMove'
-                    @mousedown='mouseDown'
-                    @mouseup='mouseUp'
-                    @wheel='wheel'
-                    style='cursor: crosshair;'
-                    oncontextmenu='return false'>
+                <canvas id='cv-mask' @mousemove='mouseMove' @mousedown='mouseDown' @mouseup='mouseUp' @wheel='wheel'
+                    style='cursor: crosshair;' oncontextmenu='return false'>
                 </canvas>
                 <svg :width='styleN' :height='styleN'>
-                    <circle
-                        :cx='uniforms.b_xy.value.x*styleN'
-                        :cy='(1.0-uniforms.b_xy.value.y)*styleN'
-                        :r='uniforms.b_r.value/2*styleN/N'
-                        stroke='red'
-                        fill='none'
-                        stroke-width='2'/>
+                    <circle :cx='uniforms.b_xy.value.x*styleN' :cy='(1.0-uniforms.b_xy.value.y)*styleN'
+                        :r='uniforms.b_r.value/2*styleN/N' stroke='red' fill='none' stroke-width='2' />
                 </svg>
             </div>
         </div>
         <div>
-            Mask URL: 
+            Mask URL:
             <input v-model='maskURL' size='10' @keyup.enter='loadMask(maskURL)'><br>
             or <input type='file' @change='loadLoaclMask' />
             <br><br>
             <div class='wrapper-small' :style='{width: styleN}'>
                 <div v-for='mask in masks' @click='loadMask(mask)'>
-                    <img :src='mask' width='100%' style='filter: grayscale(1.0); cursor: pointer;'/>
+                    <img :src='mask' width='100%' style='filter: grayscale(1.0); cursor: pointer;' />
                 </div>
             </div>
         </div>
 
     </div>
-    Inspired by <a href='http://ohzawa-lab.bpe.es.osaka-u.ac.jp/izumi/'>Prof. Ohzawa</a>'s lecture. 
-    <a href='https://www.youtube.com/watch?v=pCVdNYvORVw'>→video</a>
+
+    <div>
+        <h2>Description</h2>
+        <p>This is an interactive demo tool for understanding how 2D image Fourier transform works.</p>
+        <p>
+            This work is inspired by <a href='http://ohzawa-lab.bpe.es.osaka-u.ac.jp/izumi/'>Prof. Ohzawa</a>'s lecture.
+            <a href='https://www.youtube.com/watch?v=pCVdNYvORVw'>→video</a>
+        </p>
+        <h2>How to use</h2>
+        <ul>
+            <li>On "Masked spectrum" canvases.</li>
+            <ul>
+                <li>Scratch mask: Moue left press and drag</li>
+                <li>Restore mask: Moue right press and drag</li>
+                <li>Change brush size (red circle): Mouse wheel</li>
+            </ul>
+            <li>Change input images </li>
+        </ul>
+        <h2>Features</h2>
+        <ul>
+            <li>Mouse interactive mask edit</li>
+            <li>Real-time Fourier transform (inverse)</li>
+            <li>Input image from uploaded image or URL</li>
+            <li>Mask image from uploaded image or URL</li>
+        </ul>
+        <!-- <h2>Q&A</h2>
+        <ul>
+            <li>
+                Q. 
+                <ul>
+                    <li>A.</li>
+                </ul>
+            </li>
+        </ul> -->
+        <h2>Used technologies</h2>
+        <ul>
+            <li>HTML / Javascript</li>
+            <li>Vue.js</li>
+            <li>WebGL2</li>
+        </ul>
+        <p>
+            <a href="https://github.com/monman53/2dfft">Source codes (GitHub)</a>
+            Any suggestions and issues are welcome.
+        </p>
+        <h2>Future works</h2>
+        <ul>
+            <li>Mobile support</li>
+            <li>More friendly UI</li>
+        </ul>
+        <h2>References</h2>
+        <ul>
+            <li><a href="https://www.youtube.com/watch?v=pCVdNYvORVw">YouTube: ２次元フーリエ変換／逆変換の解説 Two-dimensional Fourier
+                    Transform Demo</a></li>
+        </ul>
+        <h2>Contacts</h2>
+        <ul>
+            <li><a href="https://github.com/monman53/2dfft">GitHub (This project)</a></li>
+            <li><a href="https://monman53.github.io/">Profile</a></li>
+            <li><a href="https://twitter.com/monman53">Twitter</a></li>
+        </ul>
+    </div>
 </div>
 
 
-<script type="x-shader/x-vertex" id="vs" >
+<script type="x-shader/x-vertex" id="vs">
     #version 300 es
     void main() {
         gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
