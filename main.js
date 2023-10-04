@@ -114,7 +114,7 @@ function render(material, texA, texB, target, ctx) {
 const app = new Vue({
     el: '.app',
     data: {
-        imageURL: 'image/lena.png',
+        imageURL: 'image/boat.png',
         maskURL:  '',
         uniforms: uniforms,
         N: N,
@@ -125,9 +125,8 @@ const app = new Vue({
             mask: false,
         },
         images: [
-            'image/lena.png',
-            'image/goldhill.png',
             'image/boat.png',
+            'image/goldhill.png',
             'image/baboon.png',
             'image/fruits.png',
             'image/airplane.png',
