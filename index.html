@@ -47,6 +47,8 @@
 
 <div class='app'>
     <h1>2D Inverse Fourier Transform Playground</h1>
+    <p>Brush size: <input type="range" min="1" :max="N" v-model.number="uniforms.b_r.value"></p>
+    <div style="overflow-x: auto;">
     <table>
         <thead>
             <tr>
@@ -86,7 +88,7 @@
                 <td>
                     <div style='position: relative;'>
                         <canvas id='cv-masked' @mousemove='mouseMove' @mousedown='mouseDown' @mouseup='mouseUp' @wheel='wheel'
-                            style='cursor: crosshair;' oncontextmenu='return false'></canvas>
+                            style='cursor: crosshair; touch-action: none;' oncontextmenu='return false'></canvas>
                         <svg :width='styleN' :height='styleN'>
                             <circle :cx='uniforms.b_xy.value.x*styleN' :cy='(1.0-uniforms.b_xy.value.y)*styleN'
                                 :r='uniforms.b_r.value/2*styleN/N' stroke='red' fill='none' stroke-width='2' />
@@ -96,7 +98,7 @@
                 <td>
                     <div style='position: relative;'>
                         <canvas id='cv-spectral' @mousemove='mouseMove' @mousedown='mouseDown' @mouseup='mouseUp' @wheel='wheel'
-                            style='cursor: crosshair;' oncontextmenu='return false'></canvas>
+                            style='cursor: crosshair; touch-action: none;' oncontextmenu='return false'></canvas>
                         <svg :width='styleN' :height='styleN'>
                             <circle :cx='uniforms.b_xy.value.x*styleN' :cy='(1.0-uniforms.b_xy.value.y)*styleN'
                                 :r='uniforms.b_r.value/2*styleN/N' stroke='red' fill='none' stroke-width='2' />
@@ -122,7 +124,7 @@
                 <td>
                     <div style='position: relative;'>
                         <canvas id='cv-mask' @mousemove='mouseMove' @mousedown='mouseDown' @mouseup='mouseUp' @wheel='wheel'
-                            style='cursor: crosshair;' oncontextmenu='return false'>
+                            style='cursor: crosshair; touch-action: none;' oncontextmenu='return false'>
                         </canvas>
                         <svg :width='styleN' :height='styleN'>
                             <circle :cx='uniforms.b_xy.value.x*styleN' :cy='(1.0-uniforms.b_xy.value.y)*styleN'
@@ -144,6 +146,7 @@
             </tr>
         </tbody>
     </table>
+    </div>
 
     <div>
         <h2>Description</h2>

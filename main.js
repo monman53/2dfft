@@ -154,6 +154,15 @@ const app = new Vue({
             ctx[name] = createContext(this, 'cv-'+name);
         }
 
+        // Register touch events as non-passive so preventDefault works
+        const app = this;
+        for (const id of ['cv-masked', 'cv-spectral', 'cv-mask']) {
+            const cv = document.getElementById(id);
+            cv.addEventListener('touchstart', (e) => app.touchStart(e), { passive: false });
+            cv.addEventListener('touchmove',  (e) => app.touchMove(e),  { passive: false });
+            cv.addEventListener('touchend',   ()  => app.touchEnd(),    { passive: false });
+        }
+
         this.loadImage(this.images[0]);
     },
     methods: {
@@ -337,6 +346,42 @@ const app = new Vue({
             let step = Math.floor(Math.log2(b_r+1));
             b_r += e.deltaY > 0 ? step : -step;
             this.uniforms.b_r.value = Math.min(Math.max(b_r, 1), this.N);
+        },
+        touchStart: function(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect  = e.target.getBoundingClientRect();
+            const x =     (touch.clientX - rect.left) / rect.width;
+            const y = 1 - (touch.clientY - rect.top)  / rect.height;
+            this.uniforms.b_active.value = 1;
+            // Two fingers = restore, one finger = scratch
+            this.uniforms.b_type.value = e.touches.length >= 2 ? 2 : 1;
+            this.uniforms.b_xy.value.x = x;
+            this.uniforms.b_xy.value.y = y;
+            this.uniforms.b_s.value.x  = x;
+            this.uniforms.b_s.value.y  = y;
+            this.uniforms.b_t.value.x  = x;
+            this.uniforms.b_t.value.y  = y;
+            this.flag.mask = true;
+            window.requestAnimationFrame(this.pipeline);
+        },
+        touchMove: function(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect  = e.target.getBoundingClientRect();
+            const x =     (touch.clientX - rect.left) / rect.width;
+            const y = 1 - (touch.clientY - rect.top)  / rect.height;
+            this.uniforms.b_xy.value.x = x;
+            this.uniforms.b_xy.value.y = y;
+            this.uniforms.b_s.value.x  = this.uniforms.b_t.value.x;
+            this.uniforms.b_s.value.y  = this.uniforms.b_t.value.y;
+            this.uniforms.b_t.value.x  = x;
+            this.uniforms.b_t.value.y  = y;
+            this.flag.mask = true;
+            window.requestAnimationFrame(this.pipeline);
+        },
+        touchEnd: function() {
+            this.uniforms.b_active.value = 0;
         },
     },
 });
