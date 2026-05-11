@@ -146,8 +146,8 @@ const app = new Vue({
             var cv = document.getElementById(id);
             cv.width  = N;
             cv.height = N;
-            cv.style.width  = app.styleN;
-            cv.style.height = app.styleN;
+            cv.style.width  = app.styleN + 'px';
+            cv.style.height = app.styleN + 'px';
             return cv.getContext('2d');
         }
         for(const name of ctxNames) {
@@ -191,7 +191,7 @@ const app = new Vue({
                 }
             );
         },
-        loadLoaclImage: function(e) {
+        loadLocalImage: function(e) {
             let file   = e.target.files[0];
             let reader = new FileReader();
             let app = this;
@@ -228,7 +228,7 @@ const app = new Vue({
                 }
             );
         },
-        loadLoaclMask: function(e) {
+        loadLocalMask: function(e) {
             let file   = e.target.files[0];
             let reader = new FileReader();
             let app = this;

@@ -1,13 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
 <title>2D Inverse Fourier Transform Playground</title>
 <meta charset="UTF-8">
 <meta name='viewport' content='width=device-width, initial-scale=1'>
 <meta name='description' content='2D fast Fourier transform live demo using WebGL2.0. 2DFFT'>
-<!-- <script src='https://cdn.jsdelivr.net/npm/vue/dist/vue.js'></script> -->
 <script src='scripts/vue.min.js'></script>
 <script src='scripts/three.min.js'></script>
-<!-- <script src='three.js'></script> -->
 
-<!-- Global site tag (gtag.js) - Google Analytics -->
+<!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-E9ZG1KHTVT"></script>
 <script src='/scripts/google.js'></script>
 
@@ -44,7 +45,8 @@
         border: solid 1px black;
     }
 </style>
-
+</head>
+<body>
 <div class='app'>
     <h1>2D Inverse Fourier Transform Playground</h1>
     <p>Brush size: <input type="range" min="1" :max="N" v-model.number="uniforms.b_r.value"></p>
@@ -54,25 +56,25 @@
             <tr>
                 <th>
                     <h2>Original image</h2>
-                    Original image or the result of backward Fourier transform of forward Fourier transform (spectrum).
+                    <p>The input image (grayscale).</p>
                 </th>
                 <th>
                     <h2>Result</h2>
-                    <p>The result of backward (inverse) Fourier transform of masked spectrum.</p>
+                    <p>The result of inverse Fourier transform of the masked spectrum.</p>
                 </th>
                 <th>
                     <h2>Masked spectrum (<span style="color: red">edit here!</span>)</h2>
                     <ul>
-                        <li><b>Left-drag</b>: Scratch mask</li>
-                        <li><b>Right-drag</b>: Restore mask</li>
-                        <li><b>Wheel</b>: Change circle size</li>
+                        <li><b>Left-drag</b> / <b>1-finger</b>: Erase mask</li>
+                        <li><b>Right-drag</b> / <b>2-finger</b>: Restore mask</li>
+                        <li><b>Wheel</b> / <b>Slider</b>: Change brush size</li>
                     </ul>
                 </th>
                 <th>
                     <h2>Spectrum</h2>
-                    <p>The result of forward Fourier transform of original imag. The actual values are complex numbers, but
-                        <a href="https://en.wikipedia.org/wiki/Absolute_value#Complex_numbers">absolute values</a> are used here
-                        for visualization.
+                    <p>Forward Fourier transform of the original image. Values are complex numbers;
+                        <a href="https://en.wikipedia.org/wiki/Absolute_value#Complex_numbers">absolute values</a>
+                        are shown for visualization.
                     </p>
                 </th>
             </tr>
@@ -108,9 +110,8 @@
             </tr>
             <tr>
                 <td>
-                    Image URL:
-                    <input v-model='imageURL' size='10' @keyup.enter='loadImage(imageURL)' /><br>
-                    or <input type='file' @change='loadLoaclImage' />
+                    <label>Image URL: <input v-model='imageURL' size='10' @keyup.enter='loadImage(imageURL)' /></label><br>
+                    or <label>File: <input type='file' @change='loadLocalImage' /></label>
                     <br><br>
                     <div class='thumbnails' :style='{width: styleN+"px"}'>
                         <div v-for='image in images' @click='loadImage(image)'>
@@ -120,6 +121,7 @@
                 </td>
                 <td>
                     <canvas id='cv-wave'></canvas>
+                    <p><b>Basis function</b><br>The 2D sinusoidal wave at the cursor frequency.</p>
                 </td>
                 <td>
                     <div style='position: relative;'>
@@ -133,9 +135,8 @@
                     </div>
                 </td>
                 <td>
-                    Mask URL:
-                    <input v-model='maskURL' size='10' @keyup.enter='loadMask(maskURL)'><br>
-                    or <input type='file' @change='loadLoaclMask' />
+                    <label>Mask URL: <input v-model='maskURL' size='10' @keyup.enter='loadMask(maskURL)'></label><br>
+                    or <label>File: <input type='file' @change='loadLocalMask' /></label>
                     <br><br>
                     <div class='thumbnails' :style='{width: styleN+"px"}'>
                         <div v-for='mask in masks' @click='loadMask(mask)'>
@@ -157,45 +158,33 @@
         </p>
         <h2>How to use</h2>
         <ul>
-            <li>On "Masked spectrum" canvases.</li>
-            <ul>
-                <li>Scratch mask: Moue left press and drag</li>
-                <li>Restore mask: Moue right press and drag</li>
-                <li>Change brush size (red circle): Mouse wheel</li>
-            </ul>
-            <li>Change input images </li>
+            <li>Edit the mask on the <b>Masked spectrum</b>, <b>Spectrum</b>, or <b>Mask</b> canvas:
+                <ul>
+                    <li>Erase mask: Mouse left-drag / 1-finger drag</li>
+                    <li>Restore mask: Mouse right-drag / 2-finger drag</li>
+                    <li>Change brush size: Mouse wheel / brush size slider</li>
+                </ul>
+            </li>
+            <li>Change the input image by clicking a thumbnail or loading a file / URL.</li>
+            <li>Change the mask by clicking a thumbnail or loading a file / URL.</li>
         </ul>
         <h2>Features</h2>
         <ul>
-            <li>Mouse interactive mask edit</li>
-            <li>Real-time Fourier transform (inverse)</li>
-            <li>Input image from uploaded image or URL</li>
-            <li>Mask image from uploaded image or URL</li>
+            <li>Interactive mask editing (mouse and touch)</li>
+            <li>Real-time inverse Fourier transform</li>
+            <li>Load image from file or URL</li>
+            <li>Load mask from file or URL</li>
         </ul>
-        <!-- <h2>Q&A</h2>
-        <ul>
-            <li>
-                Q. 
-                <ul>
-                    <li>A.</li>
-                </ul>
-            </li>
-        </ul> -->
         <h2>Used technologies</h2>
         <ul>
-            <li>HTML / Javascript</li>
+            <li>HTML / JavaScript</li>
             <li>Vue.js</li>
             <li>WebGL2</li>
         </ul>
         <p>
-            <a href="https://github.com/monman53/2dfft">Source codes (GitHub)</a>
+            <a href="https://github.com/monman53/2dfft">Source code (GitHub)</a> —
             Any suggestions and issues are welcome.
         </p>
-        <h2>Future works</h2>
-        <ul>
-            <li>Mobile support</li>
-            <li>More friendly UI</li>
-        </ul>
         <h2>References</h2>
         <ul>
             <li><a href="https://www.youtube.com/watch?v=pCVdNYvORVw">YouTube: ２次元フーリエ変換／逆変換の解説 Two-dimensional Fourier
@@ -448,3 +437,5 @@
 
 
 <script src='main.js'></script>
+</body>
+</html>
