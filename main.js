@@ -156,7 +156,7 @@ const app = new Vue({
 
         // Register touch events as non-passive so preventDefault works
         const app = this;
-        for (const id of ['cv-masked', 'cv-spectral', 'cv-mask']) {
+        for (const id of ['cv-masked', 'cv-mask']) {
             const cv = document.getElementById(id);
             cv.addEventListener('touchstart', (e) => app.touchStart(e), { passive: false });
             cv.addEventListener('touchmove',  (e) => app.touchMove(e),  { passive: false });

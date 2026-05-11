@@ -16,6 +16,7 @@
     table {
         border-collapse: separate;
         border-spacing: 10px;
+        table-layout: fixed;
     }
 
     th, td {
@@ -31,6 +32,11 @@
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         grid-gap: 5px;
+        margin-top: 8px;
+    }
+
+    .thumbnails div.selected {
+        outline: 3px solid red;
     }
 
     svg {
@@ -51,6 +57,12 @@
     <h1>2D Inverse Fourier Transform Playground</h1>
     <div style="overflow-x: auto;">
     <table>
+        <colgroup>
+            <col style="width: 400px">
+            <col style="width: 400px">
+            <col style="width: 400px">
+            <col style="width: 400px">
+        </colgroup>
         <thead>
             <tr>
                 <th>
@@ -58,8 +70,11 @@
                     <p>The input image (grayscale).</p>
                 </th>
                 <th>
-                    <h2>Result</h2>
-                    <p>The result of inverse Fourier transform of the masked spectrum.</p>
+                    <h2>Spectrum</h2>
+                    <p>Forward Fourier transform of the original image. Values are complex numbers;
+                        <a href="https://en.wikipedia.org/wiki/Absolute_value#Complex_numbers">absolute values</a>
+                        are shown for visualization.
+                    </p>
                 </th>
                 <th>
                     <h2>Masked spectrum (<span style="color: red">edit here!</span>)</h2>
@@ -71,11 +86,8 @@
                     <p>Brush size: <input type="range" min="1" :max="N" v-model.number="uniforms.b_r.value"></p>
                 </th>
                 <th>
-                    <h2>Spectrum</h2>
-                    <p>Forward Fourier transform of the original image. Values are complex numbers;
-                        <a href="https://en.wikipedia.org/wiki/Absolute_value#Complex_numbers">absolute values</a>
-                        are shown for visualization.
-                    </p>
+                    <h2>Result</h2>
+                    <p>The result of inverse Fourier transform of the masked spectrum.</p>
                 </th>
             </tr>
         </thead>
@@ -85,7 +97,7 @@
                     <canvas id='cv-original'></canvas>
                 </td>
                 <td>
-                    <canvas id='cv-result'></canvas>
+                    <canvas id='cv-spectral'></canvas>
                 </td>
                 <td>
                     <div style='position: relative;'>
@@ -98,32 +110,32 @@
                     </div>
                 </td>
                 <td>
-                    <div style='position: relative;'>
-                        <canvas id='cv-spectral' @mousemove='mouseMove' @mousedown='mouseDown' @mouseup='mouseUp' @wheel='wheel'
-                            style='cursor: crosshair; touch-action: none;' oncontextmenu='return false'></canvas>
-                        <svg :width='styleN' :height='styleN'>
-                            <circle :cx='uniforms.b_xy.value.x*styleN' :cy='(1.0-uniforms.b_xy.value.y)*styleN'
-                                :r='uniforms.b_r.value/2*styleN/N' stroke='red' fill='none' stroke-width='2' />
-                        </svg>
-                    </div>
+                    <canvas id='cv-result'></canvas>
                 </td>
             </tr>
             <tr>
                 <td>
-                    <label>Image URL: <input v-model='imageURL' size='10' @keyup.enter='loadImage(imageURL)' /></label><br>
+                    <label>Image URL: <input v-model='imageURL' size='10' /></label>
+                    <button @click='loadImage(imageURL)'>Load</button><br>
                     or <label>File: <input type='file' @change='loadLocalImage' /></label>
-                    <br><br>
                     <div class='thumbnails' :style='{width: styleN+"px"}'>
-                        <div v-for='image in images' @click='loadImage(image)'>
+                        <div v-for='image in images' :class='{selected: image === imageURL}' @click='loadImage(image)'>
                             <img :src='image' width='100%' style='filter: grayscale(1.0); cursor: pointer;' />
                         </div>
                     </div>
                 </td>
                 <td>
-                    <canvas id='cv-wave'></canvas>
-                    <p><b>Basis function</b><br>The 2D sinusoidal wave at the cursor frequency.</p>
+                    <label>Mask URL: <input v-model='maskURL' size='10'></label>
+                    <button @click='loadMask(maskURL)'>Load</button><br>
+                    or <label>File: <input type='file' @change='loadLocalMask' /></label>
+                    <div class='thumbnails' :style='{width: styleN+"px"}'>
+                        <div v-for='mask in masks' :class='{selected: mask === maskURL}' @click='loadMask(mask)'>
+                            <img :src='mask' width='100%' style='filter: grayscale(1.0); cursor: pointer;' />
+                        </div>
+                    </div>
                 </td>
                 <td>
+                    <h2>Mask</h2>
                     <div style='position: relative;'>
                         <canvas id='cv-mask' @mousemove='mouseMove' @mousedown='mouseDown' @mouseup='mouseUp' @wheel='wheel'
                             style='cursor: crosshair; touch-action: none;' oncontextmenu='return false'>
@@ -135,14 +147,9 @@
                     </div>
                 </td>
                 <td>
-                    <label>Mask URL: <input v-model='maskURL' size='10' @keyup.enter='loadMask(maskURL)'></label><br>
-                    or <label>File: <input type='file' @change='loadLocalMask' /></label>
-                    <br><br>
-                    <div class='thumbnails' :style='{width: styleN+"px"}'>
-                        <div v-for='mask in masks' @click='loadMask(mask)'>
-                            <img :src='mask' width='100%' style='filter: grayscale(1.0); cursor: pointer;' />
-                        </div>
-                    </div>
+                    <h2>Basis function</h2>
+                    <canvas id='cv-wave'></canvas>
+                    <p>The 2D sinusoidal wave at the cursor frequency.</p>
                 </td>
             </tr>
         </tbody>
@@ -158,7 +165,7 @@
         </p>
         <h2>How to use</h2>
         <ul>
-            <li>Edit the mask on the <b>Masked spectrum</b>, <b>Spectrum</b>, or <b>Mask</b> canvas:
+            <li>Edit the mask on the <b>Masked spectrum</b> or <b>Mask</b> canvas:
                 <ul>
                     <li>Erase mask: Mouse left-drag / 1-finger drag</li>
                     <li>Restore mask: Mouse right-drag / 2-finger drag</li>
