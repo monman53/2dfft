@@ -344,7 +344,7 @@ const app = new Vue({
             e.preventDefault();
             let b_r = this.uniforms.b_r.value;
             let step = Math.floor(Math.log2(b_r+1));
-            b_r += e.deltaY > 0 ? step : -step;
+            b_r += e.deltaY > 0 ? -step : step;
             this.uniforms.b_r.value = Math.min(Math.max(b_r, 1), this.N);
         },
         touchStart: function(e) {
