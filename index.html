@@ -49,7 +49,6 @@
 <body>
 <div class='app'>
     <h1>2D Inverse Fourier Transform Playground</h1>
-    <p>Brush size: <input type="range" min="1" :max="N" v-model.number="uniforms.b_r.value"></p>
     <div style="overflow-x: auto;">
     <table>
         <thead>
@@ -69,6 +68,7 @@
                         <li><b>Right-drag</b> / <b>2-finger</b>: Restore mask</li>
                         <li><b>Wheel</b> / <b>Slider</b>: Change brush size</li>
                     </ul>
+                    <p>Brush size: <input type="range" min="1" :max="N" v-model.number="uniforms.b_r.value"></p>
                 </th>
                 <th>
                     <h2>Spectrum</h2>
